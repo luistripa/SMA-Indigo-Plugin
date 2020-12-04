@@ -1,0 +1,33 @@
+<!--
+All plugin Menu Items that appear on the dropdown menu
+-->
+<MenuItems>
+
+    <MenuItem id="forceReconnectAll">
+        <Name>Reconnect All</Name>
+        <CallbackMethod>reconnectAll</CallbackMethod>
+    </MenuItem>
+
+    <MenuItem id="forceReconnectDevice">
+        <Name>Reconnect Device</Name>
+        <CallbackMethod>reconnectDevice</CallbackMethod>
+        <ConfigUI>
+            <Field id="targetDevice" type="menu">
+                <Label>Target device:</Label>
+                <List class="self" filter="self.solarInverter"/>
+            </Field>
+        </ConfigUI>
+    </MenuItem>
+
+    <MenuItem id="reconnectBundle">
+        <Name>Reconnect Bundle</Name>
+        <CallbackMethod>reconnectBundle</CallbackMethod>
+        <ConfigUI>
+            <Field id="targetBundle" type="menu">
+                <List class="self" fileter="self.inverterBundle"/>
+            </Field>
+        </ConfigUI>
+    </MenuItem>
+
+
+</MenuItems>

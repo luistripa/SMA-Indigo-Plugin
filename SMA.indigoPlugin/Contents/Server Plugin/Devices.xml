@@ -1,0 +1,200 @@
+<?xml version="1.0"?>
+<Devices>
+    <Device type="custom" id="solarInverter">
+        <Name>Solar Inverter</Name>
+        <States>
+        	<State id="serialNumber">
+        		<ValueType>Number</ValueType>
+        		<TriggerLabel>Serial Number</TriggerLabel>
+        		<ControlPageLabel>Serial Number</ControlPageLabel>
+        	</State>
+        	<State id="acPower">
+        		<ValueType>Number</ValueType>
+        		<TriggerLabel>AC Power</TriggerLabel>
+        		<ControlPageLabel>AC Power</ControlPageLabel>
+        	</State>
+        	<State id="acApparentPower">
+        		<ValueType>Number</ValueType>
+        		<TriggerLabel>AC Apparent Power</TriggerLabel>
+        		<ControlPageLabel>AC Apparent Power</ControlPageLabel>
+        	</State>
+        	<State id="acCurrent">
+        		<ValueType>Number</ValueType>
+        		<TriggerLabel>AC Current</TriggerLabel>
+        		<ControlPageLabel>AC Current</ControlPageLabel>
+        	</State>
+        	<State id="acVoltage">
+        		<ValueType>Number</ValueType>
+        		<TriggerLabel>AC Voltage</TriggerLabel>
+        		<ControlPageLabel>AC Voltage</ControlPageLabel>
+        	</State>
+        	<State id="gridFreq">
+        		<ValueType>Number</ValueType>
+        		<TriggerLabel>Grid Frequency</TriggerLabel>
+        		<ControlPageLabel>Grid Frequency</ControlPageLabel>
+        	</State>
+        	<State id="dcPower">
+        		<ValueType>Number</ValueType>
+        		<TriggerLabel>DC Power</TriggerLabel>
+        		<ControlPageLabel>DC Power</ControlPageLabel>
+        	</State>
+        	<State id="dcInputVoltage">
+        		<ValueType>Number</ValueType>
+        		<TriggerLabel>DC Input Voltage</TriggerLabel>
+        		<ControlPageLabel>DC Input Voltage</ControlPageLabel>
+        	</State>
+        	<State id="deviceTemperature">
+        		<ValueType>Number</ValueType>
+        		<TriggerLabel>Device Temperature</TriggerLabel>
+        		<ControlPageLabel>Device Temperature</ControlPageLabel>
+        	</State>
+        	<State id="dailyYield">
+        		<ValueType>Number</ValueType>
+        		<TriggerLabel>Daily Yield</TriggerLabel>
+        		<ControlPageLabel>Daily Yield</ControlPageLabel>
+        	</State>
+        	<State id="totalYield">
+        		<ValueType>Number</ValueType>
+        		<TriggerLabel>Total Yield</TriggerLabel>
+        		<ControlPageLabel>Total Yield</ControlPageLabel>
+        	</State>
+        	<State id="totalOperationTime">
+        		<ValueType>Number</ValueType>
+        		<TriggerLabel>Operation Time</TriggerLabel>
+        		<ControlPageLabel>Operation Time</ControlPageLabel>
+        	</State>
+        	<State id="feedinTime">
+        		<ValueType>Number</ValueType>
+        		<TriggerLabel>Feed-in Time</TriggerLabel>
+        		<ControlPageLabel>Feed-in Time</ControlPageLabel>
+        	</State>
+        	<State id="intermediateVoltage">
+        		<ValueType>Number</ValueType>
+        		<TriggerLabel>Intermediate Voltage</TriggerLabel>
+        		<ControlPageLabel>Intermediate Voltage</ControlPageLabel>
+        	</State>
+        	<State id="isolationResistance">
+        		<ValueType>Number</ValueType>
+        		<TriggerLabel>Isolation Resistance</TriggerLabel>
+        		<ControlPageLabel>Isolation Resistance</ControlPageLabel>
+        	</State>
+        	<State id="totalEnergyFromGrid">
+        		<ValueType>Number</ValueType>
+        		<TriggerLabel>Energy From Grid</TriggerLabel>
+        		<ControlPageLabel>Total Energy From Grid</ControlPageLabel>
+        	</State>
+        	<State id="totalEnergyToGrid">
+        		<ValueType>Number</ValueType>
+        		<TriggerLabel>Energy To Grid</TriggerLabel>
+        		<ControlPageLabel>Total Energy To Grid</ControlPageLabel>
+        	</State>
+        	<State id="powerFromGrid">
+        		<ValueType>Number</ValueType>
+        		<TriggerLabel>Power From Grid</TriggerLabel>
+        		<ControlPageLabel>Power From Grid</ControlPageLabel>
+        	</State>
+        	<State id="powerToGrid">
+        		<ValueType>Number</ValueType>
+        		<TriggerLabel>Power To Grid</TriggerLabel>
+        		<ControlPageLabel>Power To Grid</ControlPageLabel>
+        	</State>
+        </States>
+        
+        <ConfigUI>
+            <Field id="inverterAddress" type="textfield">
+                <Label>Inverter Address: </Label>
+            </Field>
+            <Field id="inverterPort" type="textfield">
+                <Label>Inverter Port: </Label>
+            </Field>
+        </ConfigUI>
+    </Device>
+    
+    <Device type="custom" id="inverterBundle">
+        <Name>Inverter Bundle</Name>
+        <States>
+			<State id="inverterCount">
+				<ValueType>Number</ValueType>
+				<TriggerLabel>Inverter Count</TriggerLabel>
+				<ControlPageLabel>Inverter Count</ControlPageLabel>
+			</State>
+
+            <State id="outputPower">
+                <ValueType>Number</ValueType>
+                <TriggerLabel>Output Power</TriggerLabel>
+                <ControlPageLabel>Output Power</ControlPageLabel>
+            </State>
+
+			<State id="powerFromGrid">
+				<ValueType>Number</ValueType>
+				<TriggerLabel>Power From Grid</TriggerLabel>
+				<ControlPageLabel>Power From Grid</ControlPageLabel>
+			</State>
+
+			<State id="powerToGrid">
+				<ValueType>Number</ValueType>
+				<TriggerLabel>Power To Grid</TriggerLabel>
+				<ControlPageLabel>Power To Grid</ControlPageLabel>
+			</State>
+        </States>
+
+
+        <ConfigUI>
+
+			<Field id="label1" type="label">
+				<Label>
+					Define in what format the data shall be presented.
+					Average creates an average value between the values of all inverters.
+				</Label>
+			</Field>
+
+			<Field id="outputPowerAverage" type="checkbox" default="false">
+				<Label>Use output power as average:</Label>
+			</Field>
+
+			<Field id="powerFromGridAverage" type="checkbox" default="false">
+				<Label>Use power from grid as average:</Label>
+			</Field>
+
+			<Field id="powerToGridAverage" type="checkbox" default="false">
+				<Label>Use power to grid as average:</Label>
+			</Field>
+
+			<Field id="sep1" type="separator"/>
+
+            <Field id="inverterList" type="list">
+                <Label>All Inverters:</Label>
+                <List class="indigo.devices" filter="self.solarInverter"/>
+            </Field>
+        </ConfigUI>
+    </Device>
+
+	<Device type="custom" id="homeManager">
+		<Name>Home Manager</Name>
+		<States>
+			<State id="powerToGrid">
+				<ValueType>Number</ValueType>
+				<TriggerLabel>Power To Grid</TriggerLabel>
+				<ControlPageLabel>Power To Grid</ControlPageLabel>
+			</State>
+
+			<State id="powerFromGrid">
+				<ValueType>Number</ValueType>
+				<TriggerLabel>Power From Grid</TriggerLabel>
+				<ControlPageLabel>Power From Grid</ControlPageLabel>
+			</State>
+		</States>
+
+		<ConfigUI>
+
+			<Field id="multicastGroup" type="textfield" default="239.12.255.254">
+				<Label>Multicast Group:</Label>
+			</Field>
+
+			<Field id="multicastPort" type="textfield" default="9522">
+				<Label>Multicast Port</Label>
+			</Field>
+		</ConfigUI>
+	</Device>
+
+</Devices>
