@@ -151,6 +151,7 @@ class Plugin(indigo.PluginBase):
                         inv.updateStates()
 
                     except ConnectionError:
+                        indigo.server.log('Lost connection to inverter: '+inv.device.name, type='SMA Energy')
                         inv.connect()  # Reconnect inverter
 
                 self.sleep(10)
