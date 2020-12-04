@@ -152,7 +152,7 @@ class Plugin(indigo.PluginBase):
 
                     except ConnectionError:
                         inv.connect()  # Reconnect inverter
-                        
+
                 self.sleep(10)
 
         except self.StopThread:
