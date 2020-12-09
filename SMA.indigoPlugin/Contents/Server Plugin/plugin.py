@@ -56,7 +56,8 @@ class Plugin(indigo.PluginBase):
 
     class HomeManager:
 
-        def __init__(self, mcastGroup, mcastPort):
+        def __init__(self, device, mcastGroup, mcastPort):
+            self.device = device
             self.mcastGroup = mcastGroup
             self.mcastPort = mcastPort
             self.setup()
@@ -82,6 +83,9 @@ class Plugin(indigo.PluginBase):
                     {'totalPowerFromGrid': totalPowerFromGrid},
                     {'powerToGrid': powerToGrid},
                     {'totalPowerToGrid': totalPowerToGrid}}
+
+        def close(self):
+            self.sock.close()
 
     def __init__(self, pluginId, pluginDisplayName, pluginVersion, pluginPrefs):
         indigo.PluginBase.__init__(self, pluginId, pluginDisplayName, pluginVersion, pluginPrefs)
@@ -115,9 +119,14 @@ class Plugin(indigo.PluginBase):
         self.bundles = list()
 
         """
-        Stores all Device objects in the system.
+        Stores all Inverter objects in the system.
         """
         self.inverters = list()
+
+        """
+        Stores all HomeManager objects in the system
+        """
+        self.homeManagers = list()
 
     def startup(self):
         pass
@@ -126,6 +135,8 @@ class Plugin(indigo.PluginBase):
         # Close connection to all inverters
         for inv in self.inverters:
             inv.client.close()
+        for hm in self.homeManagers:
+            hm.close()
 
     def runConcurrentThread(self):
         try:
@@ -151,8 +162,16 @@ class Plugin(indigo.PluginBase):
                         inv.updateStates()
 
                     except ConnectionError:
-                        indigo.server.log('Lost connection to inverter: '+inv.device.name, type='SMA Energy')
+                        indigo.server.log('Lost connection to inverter: '+inv.device.name+". Reconnecting...",
+                                          type='SMA Energy')
                         inv.connect()  # Reconnect inverter
+
+                for hm in self.homeManagers:
+                    try:
+                        states = hm.getReading()
+                        hm.device.updateStatesOnServer(states)
+                    except: # TODO: Make except less broad
+                        pass
 
                 self.sleep(10)
 
