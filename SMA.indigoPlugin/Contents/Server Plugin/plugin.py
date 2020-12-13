@@ -56,10 +56,10 @@ class Plugin(indigo.PluginBase):
 
     class HomeManager:
 
-        def __init__(self, device, mcastGroup, mcastPort):
+        def __init__(self, device):
             self.device = device
-            self.mcastGroup = mcastGroup
-            self.mcastPort = mcastPort
+            self.mcastGroup = device.pluginProps['multicastGroup']
+            self.mcastPort = int(device.pluginProps['multicastPort'])
             self.setup()
 
         def hex2dec(self, s):
@@ -79,10 +79,10 @@ class Plugin(indigo.PluginBase):
             totalPowerFromGrid = self.hex2dec(info_ascii[80:96])/3600000
             powerToGrid = self.hex2dec(info_ascii[104:112])/10
             totalPowerToGrid = self.hex2dec(info_ascii[120:136])/3600000
-            return {{'powerFromGrid': powerFromGrid},
-                    {'totalPowerFromGrid': totalPowerFromGrid},
-                    {'powerToGrid': powerToGrid},
-                    {'totalPowerToGrid': totalPowerToGrid}}
+            return [{'key': 'powerFromGrid', 'value': powerFromGrid},
+                    {'key': 'totalPowerFromGrid', 'value': totalPowerFromGrid},
+                    {'key': 'powerToGrid', 'value': powerToGrid},
+                    {'key': 'totalPowerToGrid', 'value': totalPowerToGrid}]
 
         def close(self):
             self.sock.close()
@@ -116,26 +116,26 @@ class Plugin(indigo.PluginBase):
         Stores all bundles. A bundle is a group of devices. Each bundle is a specific device that stores the average
         and total values of all inverters in the bundle.
         """
-        self.bundles = list()
+        self.bundles = dict()
 
         """
         Stores all Inverter objects in the system.
         """
-        self.inverters = list()
+        self.inverters = dict()
 
         """
         Stores all HomeManager objects in the system
         """
-        self.homeManagers = list()
+        self.homeManagers = dict()
 
     def startup(self):
         pass
 
     def shutdown(self):
         # Close connection to all inverters
-        for inv in self.inverters:
+        for inv in self.inverters.values():
             inv.client.close()
-        for hm in self.homeManagers:
+        for hm in self.homeManagers.values():
             hm.close()
 
     def runConcurrentThread(self):
@@ -153,7 +153,7 @@ class Plugin(indigo.PluginBase):
                         self.updateStateOnBundle(state, sumValues)"""
 
             while True:
-                for inv in self.inverters:
+                for inv in self.inverters.values():
                     try:
                         for reg in self.registers:
                                 state = self.registers.get(reg)[3]
@@ -163,15 +163,15 @@ class Plugin(indigo.PluginBase):
 
                     except ConnectionError:
                         indigo.server.log('Lost connection to inverter: '+inv.device.name+". Reconnecting...",
-                                          type='SMA Energy')
+                                          type=DISPLAY_NAME)
                         inv.connect()  # Reconnect inverter
 
-                for hm in self.homeManagers:
+                for hm in self.homeManagers.values():
                     try:
                         states = hm.getReading()
                         hm.device.updateStatesOnServer(states)
                     except: # TODO: Make except less broad
-                        pass
+                        indigo.server.log('Caught unknown exception.', type=DISPLAY_NAME)
 
                 self.sleep(10)
 
@@ -189,15 +189,14 @@ class Plugin(indigo.PluginBase):
 
         if dev.deviceTypeId == 'solarInverter':
                 inverter = self.Inverter(dev, props['inverterAddress'], int(props['inverterPort']))
-                self.inverters.append(inverter)
 
                 if inverter.connect():
+                    self.inverters[dev] = inverter
                     indigo.server.log('Started communication with inverter device: '+inverter.device.name,
                                       type=DISPLAY_NAME)
-                    dev.updateStateImageOnServer(indigo.EnergyMeterOn)
 
                 else:
-                    indigo.server.log('Failed to establish connection to inverter.',
+                    indigo.server.log('Failed to establish connection to inverter: '+inverter.device_name,
                                       type=DISPLAY_NAME)
 
         elif dev.deviceTypeId == 'inverterBundle':
@@ -205,18 +204,24 @@ class Plugin(indigo.PluginBase):
             for inverterId in props['inverterList']:
                 inverter = indigo.devices[inverterId]
                 bundle.insertInverter(inverter)
-            self.bundles.append(bundle)
+            self.bundles[dev] = bundle
 
         elif dev.deviceTypeId == 'homeManager':
-            pass
+            homeManager = self.HomeManager(dev)
+            self.homeManagers[dev] = homeManager
 
         else:
             indigo.server.log('Unknown device type id.', type=DISPLAY_NAME)
 
     def deviceStopComm(self, dev):
 
-        if dev.deviceTypeId == 'solarInverter' and dev in self.devices:
-            del self.devices[dev]
+        if dev.deviceTypeId == 'solarInverter' and dev in self.inverters.keys():
+            self.inverters[dev].close()
+            del self.inverters[dev]
+
+        elif dev.deviceTypeId == 'homeManager' and dev in self.homeManagers.keys():
+            self.homeManagers[dev].close()
+            del self.homeManagers[dev]
 
     ###########################
 

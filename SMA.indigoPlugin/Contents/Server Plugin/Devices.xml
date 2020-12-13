@@ -183,15 +183,27 @@
 				<TriggerLabel>Power From Grid</TriggerLabel>
 				<ControlPageLabel>Power From Grid</ControlPageLabel>
 			</State>
+
+			<State id="totalPowerToGrid">
+				<ValueType>Number</ValueType>
+				<TriggerLabel>Total Power To Grid</TriggerLabel>
+				<ControlPageLabel>Total Power To Grid</ControlPageLabel>
+			</State>
+
+			<State id="totalPowerFromGrid">
+				<ValueType>Number</ValueType>
+				<TriggerLabel>Total Power From Grid</TriggerLabel>
+				<ControlPageLabel>Total Power From Grid</ControlPageLabel>
+			</State>
 		</States>
 
 		<ConfigUI>
 
-			<Field id="multicastGroup" type="textfield" default="239.12.255.254">
+			<Field id="multicastGroup" type="textfield" defaultValue="239.12.255.254">
 				<Label>Multicast Group:</Label>
 			</Field>
 
-			<Field id="multicastPort" type="textfield" default="9522">
+			<Field id="multicastPort" type="textfield" defaultValue="9522">
 				<Label>Multicast Port</Label>
 			</Field>
 		</ConfigUI>
