@@ -5,12 +5,12 @@ All plugin Menu Items that appear on the dropdown menu
 
     <MenuItem id="forceReconnectAll">
         <Name>Reconnect All</Name>
-        <CallbackMethod>reconnectAll</CallbackMethod>
+        <CallbackMethod>reconnect_all</CallbackMethod>
     </MenuItem>
 
     <MenuItem id="forceReconnectDevice">
         <Name>Reconnect Device</Name>
-        <CallbackMethod>reconnectDevice</CallbackMethod>
+        <CallbackMethod>reconnect_device</CallbackMethod>
         <ConfigUI>
             <Field id="targetDevice" type="menu">
                 <Label>Target device:</Label>
@@ -21,7 +21,7 @@ All plugin Menu Items that appear on the dropdown menu
 
     <MenuItem id="reconnectBundle">
         <Name>Reconnect Bundle</Name>
-        <CallbackMethod>reconnectBundle</CallbackMethod>
+        <CallbackMethod>reconnect_bundle</CallbackMethod>
         <ConfigUI>
             <Field id="targetBundle" type="menu">
                 <List class="self" fileter="self.inverterBundle"/>
