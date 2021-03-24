@@ -1,5 +1,5 @@
-from typing import List, Dict, Union
 from pymodbus.client.sync import ModbusTcpClient as ModbusClient
+from comms import Client
 
 
 class Inverter:
@@ -7,8 +7,8 @@ class Inverter:
         self.device = device
         self.host = host
         self.port = port
-        self.client = ModbusClient(host=self.host, port=self.port)
-        self.states: Dict[str, Union[str, int]] = dict()
+        self.client = Client(host, port)
+        self.states = dict()
 
     def connect(self) -> bool:
         return self.client.connect()
@@ -16,20 +16,18 @@ class Inverter:
     def disconnect(self):
         self.client.close()
 
-    def update_state(self, key, value):
-        self.states[key] = value
-
-    def update_states_on_server(self):
-        states = []
-        for key, value in self.states.keys(), self.states.values():
-            states.append({'key': key, 'value': value})
-        self.device.updateStatesOnServer()
+    def update_states(self):
+        indigo_states = []
+        self.states = self.client.generate_states()
+        for state, value in self.states:
+            indigo_states.append({'key': state, 'value': value})
+        self.device.updateStatesOnServer(indigo_states)
 
 
 class InverterBundle:
     def __init__(self, device):
         self.device = device
-        self.inverters: List[Inverter] = list()
+        self.inverters = list()
 
     def add_inverter(self, inverter: Inverter):
         self.inverters.append(inverter)

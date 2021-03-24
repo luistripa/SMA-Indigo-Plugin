@@ -2,19 +2,14 @@ import indigo
 import socket
 from struct import pack
 from binascii import b2a_hex
-from pymodbus.client.sync import ModbusTcpClient as ModbusClient
-from pymodbus.payload import BinaryPayloadDecoder
-from pymodbus.constants import Endian
 
 from objects import Inverter, InverterBundle
-from typing import Dict, List, Union
 import traceback
 
 DISPLAY_NAME = 'Energy Meter'
 
 
 class Plugin(indigo.PluginBase):
-
     class HomeManager:
         """
         Output values are not correct
@@ -54,38 +49,16 @@ class Plugin(indigo.PluginBase):
     def __init__(self, pluginId, pluginDisplayName, pluginVersion, pluginPrefs):
         indigo.PluginBase.__init__(self, pluginId, pluginDisplayName, pluginVersion, pluginPrefs)
 
-        self.registers = {
-            '30057': [2, 'U32', 'RAW', 'serialNumber'],  # Serial number
-            '30775': [2, 'S32', 'FIX0', 'acPower'],  # AC Power (W)
-            '30813': [2, 'S32', 'FIX0', 'acApparentPower'],  # AC Apparent Power (VA)
-            '30977': [2, 'S32', 'FIX3', 'acCurrent'],  # AC Current (A)
-            '30783': [2, 'S32', 'FIX2', 'acVoltage'],  # AC Voltage (V)
-            '30803': [2, 'U32', 'FIX2', 'gridFreq'],  # Grid Freq (Hz)
-            '30773': [2, 'S32', 'FIX0', 'dcPower'],  # DC Power (W)
-            '30771': [2, 'S32', 'FIX2', 'dcInputVoltage'],  # DC Input Voltage (V)
-            '30953': [2, 'S32', 'FIX1', 'deviceTemperature'],  # Device Temp (degrees Celsius)
-            '30517': [4, 'U64', 'FIX0', 'dailyYield'],  # Daily Yield (Wh)
-            '30513': [4, 'U64', 'FIX0', 'totalYield'],  # Total Yield (Wh)
-            '30521': [4, 'U64', 'FIX0', 'totalOperationTime'],  # Operation Time (S)
-            '30525': [4, 'U64', 'FIX0', 'feedinTime'],  # Feed-In Time (S)
-            '30975': [2, 'S32', 'FIX2', 'intermediateVoltage'],  # Intermediate Voltage (V)
-            '30225': [2, 'S32', 'FIX0', 'isolationResistance'],  # Isolation Resistance (Ohm) (u'\u03a9')
-            '30581': [2, 'U32', 'FIX0', 'totalEnergyFromGrid'],  # Energy from Grid (Wh)
-            '30583': [2, 'U32', 'FIX0', 'totalEnergyToGrid'],  # Energy to Grid (Wh)
-            '30865': [2, 'S32', 'FIX0', 'powerFromGrid'],  # Power from Grid (W)
-            '30867': [2, 'S32', 'FIX0', 'powerToGrid'],  # Power to Grid (W)
-        }
-
         """
         Stores all bundles. A bundle is a group of devices. Each bundle is a specific device that stores the average
         and total values of all inverters in the bundle.
         """
-        self.bundles: Dict[str, InverterBundle] = dict()
+        self.bundles = dict()
 
         """
         Stores all Inverter objects in the system.
         """
-        self.inverters: Dict[str, Inverter] = dict()
+        self.inverters = dict()
 
         """
         Stores all HomeManager objects in the system
@@ -121,15 +94,14 @@ class Plugin(indigo.PluginBase):
         props = dev.pluginProps
 
         if dev.deviceTypeId == 'solarInverter':
-            inverter = self.Inverter(dev, props['inverterAddress'], int(props['inverterPort']))
+            inverter = Inverter(dev, props['inverterAddress'], int(props['inverterPort']))
 
             if inverter.connect():
                 self.inverters[dev.name] = inverter
-                indigo.server.log('Started communication with inverter device: ' + inverter.device.name,
+                indigo.server.log('Started communication with inverter device: {}'.format(inverter.device.name),
                                   type=DISPLAY_NAME)
-
             else:
-                indigo.server.log('Failed to establish connection to inverter: ' + inverter.device.name,
+                indigo.server.log('Failed to establish connection to inverter: {}'.format(inverter.device.name),
                                   type=DISPLAY_NAME)
 
         elif dev.deviceTypeId == 'inverterBundle':
@@ -160,15 +132,12 @@ class Plugin(indigo.PluginBase):
     def update_inverters(self):
         for inv in self.inverters.values():
             try:
-                for reg in self.registers:
-                    state = self.registers.get(reg)[3]
-                    value = self.getInverterRegister(inv.client, reg)
-                    inv.update_state(state, value)
-                inv.update_states_on_server()
+                inv.update_states()
 
             except ConnectionError:
-                indigo.server.log('Lost connection to inverter: ' + inv.device.name + ". Reconnecting...",
+                indigo.server.log('Lost connection to inverter: {}. Reconnecting...'.format(inv.device.name),
                                   type=DISPLAY_NAME)
+                inv.disconnect()
                 inv.connect()  # Reconnect inverter
 
     def update_inverter_bundles(self):
@@ -183,72 +152,13 @@ class Plugin(indigo.PluginBase):
             except Exception as e:
                 indigo.server.log(traceback.print_exc(), type=DISPLAY_NAME)
 
-    def getInverterRegister(self, client, register):
-        received = client.read_input_registers(address=int(register),
-                                               count=self.registers.get(register)[0],
-                                               unit=3)
-        data = BinaryPayloadDecoder.fromRegisters(received.registers,
-                                                  byteorder=Endian.Big,
-                                                  wordorder=Endian.Big)
-
-        data_type = self.registers.get(register)[1]
-        fix = self.registers.get(register)[2]
-
-        data = self._decode_data(data, data_type)
-        data = self._unfix_data(data, fix)
-
-        return data
-
-    @staticmethod
-    def _decode_data(data, data_type):
-        if data_type == "S32":
-            data_decoded = data.decode_32bit_int()
-
-        elif data_type == "U32":
-            data_decoded = data.decode_32bit_uint()
-
-        elif data_type == "U64":
-            data_decoded = data.decode_64bit_uint()
-
-        elif data_type == "STR32":
-            data_decoded = data.decode_string(32).decode("utf-8").strip("\x00")
-
-        elif data_type == 'S16':
-            data_decoded = data.decode_16bit_int()
-
-        elif data_type == 'U16':
-            data_decoded = data.decode_16bit_uint()
-
-        else:
-            data_decoded = data.decode_16bit_uint()
-
-        # When solar inverters are not generating, the output values are a fixed value.
-        # The following if compensates those values and turns them to zero
-        if data_decoded in [-2147483648, 0xFFFFFFFF, 0xFFFFFFFFFFFFFFFF, 0x8000, 0xFFFF]:
-            data_decoded = 0
-
-        return data_decoded
-
-    @staticmethod
-    def _unfix_data(data, fix):
-        if fix == "FIX3":
-            data = float(data) / 1000
-        elif fix == "FIX2":
-            data = float(data) / 100
-        elif fix == "FIX1":
-            data = float(data) / 10
-        else:
-            data = data
-
-        return data
-
     def reconnect_all(self):
         indigo.server.log('Reconnecting all devices........%d devices' % len(self.devices))
         for inv in self.inverters.values():
             if inv.connect():
-                indigo.server.log('    - %s --- OK' % inv.device.name, type=DISPLAY_NAME)
+                indigo.server.log('    - {} --- OK'.format(inv.device.name), type=DISPLAY_NAME)
             else:
-                indigo.server.log('    - %s --- FAILED' % inv.device.name, type=DISPLAY_NAME)
+                indigo.server.log('    - {} --- FAILED'.format(inv.device.name), type=DISPLAY_NAME)
 
     def reconnect_device(self, valuesDict, typeId):
         indigo.server.log('Not yet implemented', type=DISPLAY_NAME)
