@@ -104,7 +104,7 @@
             <Field id="inverterAddress" type="textfield">
                 <Label>Inverter Address: </Label>
             </Field>
-            <Field id="inverterPort" type="textfield">
+            <Field id="inverterPort" type="textfield" default="502">
                 <Label>Inverter Port: </Label>
             </Field>
         </ConfigUI>
@@ -198,6 +198,13 @@
 		</States>
 
 		<ConfigUI>
+
+			<Field id="label1" type="label">
+				<Label>
+					Attention! This device type is being discontinued by this plugin.
+					The values stored in the states will not be correct and it is not guaranteed to work 100% correctly.
+				</Label>
+			</Field>
 
 			<Field id="multicastGroup" type="textfield" defaultValue="239.12.255.254">
 				<Label>Multicast Group:</Label>
