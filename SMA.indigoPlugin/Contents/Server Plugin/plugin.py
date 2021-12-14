@@ -1,7 +1,6 @@
 import indigo
 
-from objects import Inverter, InverterBundle, HomeManager
-import traceback
+from objects import Inverter, InverterBundle
 
 DISPLAY_NAME = 'Energy Meter'
 
@@ -27,7 +26,7 @@ class Plugin(indigo.PluginBase):
         self.homeManagers = dict()
 
     def startup(self):
-        pass
+        super(Plugin, self).startup()
 
     def shutdown(self):
         # Close connection to all inverters
@@ -35,13 +34,13 @@ class Plugin(indigo.PluginBase):
             inv.client.close()
         for hm in self.homeManagers.values():
             hm.close()
+        super(Plugin, self).shutdown()
 
     def runConcurrentThread(self):
         try:
             while True:
                 self.update_inverters()
                 self.update_inverter_bundles()
-                self.update_home_managers()
                 self.sleep(10)
 
         except self.StopThread:
@@ -72,10 +71,6 @@ class Plugin(indigo.PluginBase):
                 bundle.add_inverter(inverter)
             self.bundles[dev.name] = bundle
 
-        elif dev.deviceTypeId == 'homeManager':
-            home_manager = HomeManager(dev)
-            self.homeManagers[dev.name] = home_manager
-
         else:
             indigo.server.log('Unknown device type id.', type=DISPLAY_NAME)
 
@@ -83,10 +78,6 @@ class Plugin(indigo.PluginBase):
         if dev.deviceTypeId == 'solarInverter' and dev.name in self.inverters.keys():
             self.inverters[dev.name].disconnect()
             del self.inverters[dev.name]
-
-        elif dev.deviceTypeId == 'homeManager' and dev in self.homeManagers.keys():
-            self.homeManagers[dev.name].close()
-            del self.homeManagers[dev.name]
 
     ###########################
 
@@ -99,11 +90,10 @@ class Plugin(indigo.PluginBase):
             try:
                 inv.update_states()
 
-            except ConnectionError:
+            except ConnectionError or AttributeError:
                 indigo.server.log('Lost connection to inverter: {}. Reconnecting...'.format(inv.device.name),
                                   type=DISPLAY_NAME)
-                inv.disconnect()
-                inv.connect()  # Reconnect inverter
+                inv.reconnect()
 
     def update_inverter_bundles(self):
         """
@@ -111,19 +101,6 @@ class Plugin(indigo.PluginBase):
         """
         for bundle in self.bundles.values():
             bundle.update_all_states()
-
-    def update_home_managers(self):
-        """
-        Updates all Home Managers.
-        Home Manager support is being discontinued by this plugin. The values that are output are not correct and should
-        not be used.
-        """
-        for hm in self.homeManagers.values():
-            try:
-                states = hm.getReading()
-                hm.device.updateStatesOnServer(states)
-            except Exception as e:
-                indigo.server.log(traceback.print_exc(), type=DISPLAY_NAME)
 
     def reconnect_all(self):
         """
