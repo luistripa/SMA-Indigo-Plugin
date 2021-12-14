@@ -14,8 +14,8 @@ It may or may not work on your system
 
 ## How to install
 - Download the SMA.indigoPlugin file
-- Double click on the file to install it on your system
-- Configure a device. Please refer to [Device Creation/Configuration](#device-creationconfiguration)
+- Double-click on the file to install it on your system OR move it to the plugins folder
+- You may need to reboot your system
 
 ## Device types
 - **Inverter**: A normal solar inverter. This is what you need when configuring a new inverter.
