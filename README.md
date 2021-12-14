@@ -31,7 +31,7 @@ configure a new one, you're in the right section!
 - Create a new device
 - Select *SMA Energy* from the Type dropdown
 - Select *Inverter* from the Model dropdown
-- Fill in the inverter network address and port (default 502)
+- Fill in the inverter network address and port (default port 502)
 - Click *Save*
 - Name your device and insert optional notes
 - Close the *Create New Device* menu
