@@ -20,7 +20,7 @@ class Client:
         '30517': [4, 'U64', 'FIX0', 'dailyYield'],  # Daily Yield (Wh)
         '30513': [4, 'U64', 'FIX0', 'totalYield'],  # Total Yield (Wh)
         '30521': [4, 'U64', 'FIX0', 'totalOperationTime'],  # Operation Time (S)
-        '30525': [4, 'U64', 'FIX0', 'feedinTime'],  # Feed-In Time (S)
+        '30525': [4, 'U64', 'FIX0', 'feedInTime'],  # Feed-In Time (S)
         '30975': [2, 'S32', 'FIX2', 'intermediateVoltage'],  # Intermediate Voltage (V)
         '30225': [2, 'S32', 'FIX0', 'isolationResistance'],  # Isolation Resistance (Ohm) (u'\u03a9')
         '30581': [2, 'U32', 'FIX0', 'totalEnergyFromGrid'],  # Energy from Grid (Wh)
@@ -33,7 +33,7 @@ class Client:
         self.client = ModbusClient(host=host, port=port)
 
     def connect(self):
-        self.client.connect()
+        return self.client.connect()
 
     def close(self):
         self.client.close()
