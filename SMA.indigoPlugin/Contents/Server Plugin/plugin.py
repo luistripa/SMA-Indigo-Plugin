@@ -101,12 +101,16 @@ class Plugin(indigo.PluginBase):
         else:
             indigo.server.log('Unknown device type id: {}'.format(dev.deviceTypeId), type=DISPLAY_NAME)
 
-    def deviceStopComm(self, dev):
-        if dev.deviceTypeId == 'smaIndigoInverter' and dev.id in self.inverters.keys():
-            self.inverters[dev.name].disconnect()
-            del self.inverters[dev.id]
-        elif dev.deviceTypeId == 'smaIndigoAggregation' and dev.id in self.aggregations.keys():
-            del self.aggregations[dev.id]
+    def deviceStopComm(self, device):
+        if device.deviceTypeId == 'smaIndigoInverter' and device.id in self.inverters.keys():
+            inverter = self.inverters.get(device.id)
+            self.modBusService.disconnect_inverter(inverter)
+            del self.inverters[device.id]
+            indigo.server.log('Stopped communication with inverter device: {}'.format(device.name),
+                              type=DISPLAY_NAME)
+
+        elif device.deviceTypeId == 'smaIndigoAggregation' and device.id in self.aggregations.keys():
+            del self.aggregations[device.id]
 
     ###########################
 

@@ -23,7 +23,8 @@ class TestInverterToInverterAggregation(unittest.TestCase):
         self.assertEqual(aggregation.value, 0)
 
     def test_create_average(self):
-        aggregation = InverterToInverterAggregation(dict(), self.inverter1, "state2", self.inverter2, "state2", "average")
+        aggregation = InverterToInverterAggregation(dict(), self.inverter1, "state2", self.inverter2, "state2",
+                                                    "average")
 
         self.assertEqual(len(aggregation.device), 0)
         self.assertEqual(aggregation.inverter1, self.inverter1)

@@ -34,6 +34,10 @@ class ModBusService:
         client.close()
         return client.connect()
 
+    def disconnect_inverter(self, inverter):
+        client = self.clients[inverter.device.id]
+        client.close()
+
 
 class IndigoService:
     @staticmethod
