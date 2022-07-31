@@ -1,7 +1,27 @@
+import indigo
 
 
-class Inverter:
+class Dependency(object):
+    def __init__(self):
+        self._dependencies = list()
+        self._dependants = list()
+
+    def add_dependency(self, dependency):
+        self._dependencies.append(dependency)
+
+    def add_dependant(self, dependant):
+        self._dependants.append(dependant)
+
+    def get_dependencies(self):
+        return self._dependencies
+
+    def get_dependants(self):
+        return self._dependants
+
+
+class Inverter(Dependency):
     def __init__(self, device):
+        super(Inverter, self).__init__()
         self.device = device
         self.states = dict()
 
@@ -12,8 +32,9 @@ class Inverter:
         return self.states.get(state_name, None)
 
 
-class Aggregation(object):
+class Aggregation(Dependency):
     def __init__(self, device):
+        super(Aggregation, self).__init__()
         self.device = device
         self.value = 0
 
@@ -33,8 +54,9 @@ class InverterListAggregation(Aggregation):
 
     def calculate_value(self):
         value = 0
-        for inverter in self.inverter_list:
-            value += inverter.get_value_for_state(self.state)
+        for inverter_id in self.inverter_list:
+            inverter = indigo.devices[int(inverter_id)]
+            value += inverter.states[self.state]
 
         if self.operation == "sum":
             self.value = value
@@ -50,8 +72,8 @@ class AggregationListAggregation(Aggregation):
 
     def calculate_value(self):
         value = 0
-        for aggregation in self.aggregation_list:
-            value += aggregation.get_value()
+        for aggregation_id in self.aggregation_list:
+            value += indigo.devices[int(aggregation_id)].states['value']
 
         if self.operation == "sum":
             self.value = value
@@ -70,26 +92,29 @@ class InverterToInverterAggregation(Aggregation):
 
     def calculate_value(self):
         if self.operation == "sum":
-            self.value = self.inverter1.get_value_for_state(self.inverter1_state) + \
-                         self.inverter2.get_value_for_state(self.inverter2_state)
+            self.value = indigo.devices[self.inverter1].states[self.inverter1_state] + \
+                         indigo.devices[self.inverter2].states[self.inverter2_state]
         elif self.operation == "subtraction":
-            self.value = self.inverter1.get_value_for_state(self.inverter1_state) - \
-                         self.inverter2.get_value_for_state(self.inverter2_state)
+            self.value = indigo.devices[self.inverter1].states[self.inverter1_state] - \
+                         indigo.devices[self.inverter2].states[self.inverter2_state]
         elif self.operation == "division":
-            self.value = self.inverter1.get_value_for_state(self.inverter1_state) / \
-                         self.inverter2.get_value_for_state(self.inverter2_state)
+            try:
+                self.value = indigo.devices[self.inverter1].states[self.inverter1_state] / \
+                             indigo.devices[self.inverter2].states[self.inverter2_state]
+            except ZeroDivisionError:
+                self.value = 0
         elif self.operation == "multiplication":
-            self.value = self.inverter1.get_value_for_state(self.inverter1_state) * \
-                         self.inverter2.get_value_for_state(self.inverter2_state)
+            self.value = indigo.devices[self.inverter1].states[self.inverter1_state] * \
+                         indigo.devices[self.inverter2].states[self.inverter2_state]
         elif self.operation == "average":
-            self.value = (self.inverter1.get_value_for_state(self.inverter1_state) +
-                          self.inverter2.get_value_for_state(self.inverter2_state)) / 2
+            self.value = (indigo.devices[self.inverter1].states[self.inverter1_state] +
+                          indigo.devices[self.inverter2].states[self.inverter2_state]) / 2
         elif self.operation == "min":
-            self.value = min(self.inverter1.get_value_for_state(self.inverter1_state),
-                             self.inverter2.get_value_for_state(self.inverter2_state))
+            self.value = min(indigo.devices[self.inverter1].states[self.inverter1_state],
+                             indigo.devices[self.inverter2].states[self.inverter2_state])
         elif self.operation == "max":
-            self.value = max(self.inverter1.get_value_for_state(self.inverter1_state),
-                             self.inverter2.get_value_for_state(self.inverter2_state))
+            self.value = max(indigo.devices[self.inverter1].states[self.inverter1_state],
+                             indigo.devices[self.inverter2].states[self.inverter2_state])
 
 
 class AggregationToAggregationAggregation(Aggregation):
@@ -101,16 +126,96 @@ class AggregationToAggregationAggregation(Aggregation):
 
     def calculate_value(self):
         if self.operation == "sum":
-            self.value = self.aggregation1.get_value() + self.aggregation2.get_value()
+            self.value = indigo.devices[self.aggregation1].states['value'] + \
+                         indigo.devices[self.aggregation2].states['value']
         elif self.operation == "subtraction":
-            self.value = self.aggregation1.get_value() - self.aggregation2.get_value()
+            self.value = indigo.devices[self.aggregation1].states['value'] - \
+                         indigo.devices[self.aggregation2].states['value']
         elif self.operation == "division":
-            self.value = self.aggregation1.get_value() / self.aggregation2.get_value()
+            try:
+                self.value = indigo.devices[self.aggregation1].states['value'] / \
+                             indigo.devices[self.aggregation2].states['value']
+            except ZeroDivisionError:
+                self.value = 0
         elif self.operation == "multiplication":
-            self.value = self.aggregation1.get_value() * self.aggregation2.get_value()
+            self.value = indigo.devices[self.aggregation1].states['value'] * \
+                         indigo.devices[self.aggregation2].states['value']
         elif self.operation == "average":
-            self.value = (self.aggregation1.get_value() + self.aggregation2.get_value()) / 2
+            self.value = (indigo.devices[self.aggregation1].states['value'] +
+                          indigo.devices[self.aggregation2].states['value']) / 2
         elif self.operation == "min":
-            self.value = min(self.aggregation1.get_value(), self.aggregation2.get_value())
+            self.value = min(indigo.devices[self.aggregation1].states['value'],
+                             indigo.devices[self.aggregation2].states['value'])
         elif self.operation == "max":
-            self.value = max(self.aggregation1.get_value(), self.aggregation2.get_value())
+            self.value = max(indigo.devices[self.aggregation1].states['value'],
+                             indigo.devices[self.aggregation2].states['value'])
+
+
+class AggregationToInverterAggregation(Aggregation):
+    def __init__(self, device, aggregation, inverter, inverter_state, operation):
+        super(AggregationToInverterAggregation, self).__init__(device)
+        self.aggregation = aggregation
+        self.inverter = inverter
+        self.inverter_state = inverter_state
+        self.operation = operation
+
+    def calculate_value(self):
+        if self.operation == "sum":
+            self.value = indigo.devices[self.aggregation].states['value'] + \
+                         indigo.devices[self.inverter].states[self.inverter_state]
+        elif self.operation == "subtraction":
+            self.value = indigo.devices[self.aggregation].states['value'] - \
+                         indigo.devices[self.inverter].states[self.inverter_state]
+        elif self.operation == "division":
+            try:
+                self.value = indigo.devices[self.aggregation].states['value'] / \
+                             indigo.devices[self.inverter].states[self.inverter_state]
+            except ZeroDivisionError:
+                self.value = 0
+        elif self.operation == "multiplication":
+            self.value = indigo.devices[self.aggregation].states['value'] * \
+                         indigo.devices[self.inverter].states[self.inverter_state]
+        elif self.operation == "average":
+            self.value = (indigo.devices[self.aggregation].states['value'] +
+                          indigo.devices[self.inverter].states[self.inverter_state]) / 2
+        elif self.operation == "min":
+            self.value = min(indigo.devices[self.aggregation].states['value'],
+                             indigo.devices[self.inverter].states[self.inverter_state])
+        elif self.operation == "max":
+            self.value = max(indigo.devices[self.aggregation].states['value'],
+                             indigo.devices[self.inverter].states[self.inverter_state])
+
+
+class InverterToAggregationAggregation(Aggregation):
+    def __init__(self, device, inverter, inverter_state, aggregation, operation):
+        super(InverterToAggregationAggregation, self).__init__(device)
+        self.inverter = inverter
+        self.inverter_state = inverter_state
+        self.aggregation = aggregation
+        self.operation = operation
+
+    def calculate_value(self):
+        if self.operation == "sum":
+            self.value = indigo.devices[self.inverter].states[self.inverter_state] + \
+                         indigo.devices[self.aggregation].states['value']
+        elif self.operation == "subtraction":
+            self.value = indigo.devices[self.inverter].states[self.inverter_state] - \
+                         indigo.devices[self.aggregation].states['value']
+        elif self.operation == "division":
+            try:
+                self.value = indigo.devices[self.inverter].states[self.inverter_state] / \
+                             indigo.devices[self.aggregation].states['value']
+            except ZeroDivisionError:
+                self.value = 0
+        elif self.operation == "multiplication":
+            self.value = indigo.devices[self.inverter].states[self.inverter_state] * \
+                         indigo.devices[self.aggregation].states['value']
+        elif self.operation == "average":
+            self.value = (indigo.devices[self.inverter].states[self.inverter_state] +
+                          indigo.devices[self.aggregation].states['value']) / 2
+        elif self.operation == "min":
+            self.value = min(indigo.devices[self.inverter].states[self.inverter_state],
+                             indigo.devices[self.aggregation].states['value'])
+        elif self.operation == "max":
+            self.value = max(indigo.devices[self.inverter].states[self.inverter_state],
+                             indigo.devices[self.aggregation].states['value'])

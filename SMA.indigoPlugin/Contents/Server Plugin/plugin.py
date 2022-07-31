@@ -1,7 +1,11 @@
 import indigo
 
 from objects import *
-from services import IndigoService, ModBusService
+from services import IndigoService
+from pymodbus.exceptions import ModbusException
+
+from comms import Client
+
 
 DISPLAY_NAME = 'SMA Energy'
 
@@ -12,6 +16,8 @@ class Plugin(indigo.PluginBase):
 
         """
         Stores all Inverter objects in the system.
+        Key is device id
+        Value is Client object
         """
         self.inverters = dict()
 
@@ -21,14 +27,19 @@ class Plugin(indigo.PluginBase):
         """
         self.aggregations = dict()
 
-        self.modBusService = ModBusService()
+        """
+        Defines dependencies between devices.
+        Key is device id
+        Value is device dependencies
+        """
+        self.dependencies = dict()
 
     def startup(self):
         pass
 
     def shutdown(self):
         # Close connection to all inverters
-        for client in self.modBusService.clients:
+        for client in self.inverters.values():
             client.close()
 
     def runConcurrentThread(self):
@@ -45,66 +56,99 @@ class Plugin(indigo.PluginBase):
         if not userCancelled:
             pass
 
-    def deviceStartComm(self, dev):
-        properties = dev.pluginProps
+    def deviceStartComm(self, device):
+        properties = device.pluginProps
 
-        if dev.deviceTypeId == 'smaIndigoInverter':
-            inverter = Inverter(dev)
-
-            if self.modBusService.register_inverter(inverter, properties['inverterAddress'], int(properties['inverterPort'])):
-                self.inverters[dev.id] = inverter
-                indigo.server.log('Started communication with inverter device: {}'.format(inverter.device.name),
+        if device.deviceTypeId == 'smaIndigoInverter':
+            client = Client(properties['inverterAddress'], int(properties['inverterPort']))
+            if client.connect():
+                self.inverters[device.id] = client
+                indigo.server.log('Started communication with inverter device: {}'.format(device.name),
                                   type=DISPLAY_NAME)
             else:
-                indigo.server.log('Failed to establish connection to inverter: {}'.format(inverter.device.name),
+                indigo.server.log('Failed to establish connection to inverter: {}'.format(device.name),
                                   type=DISPLAY_NAME)
 
-        elif dev.deviceTypeId == "smaIndigoAggregation":
+        elif device.deviceTypeId == "smaIndigoAggregation":
             aggregation_type = properties["aggregationType"]
 
             if aggregation_type == "inverterList":
-                inverters = [self.inverters[str(inverter_id)] for inverter_id in properties["inverterList"]]
-                state = properties["inverterListState"]
-                operation = properties["inverterListOperation"]
-                aggregation = InverterListAggregation(dev, inverters, state, operation)
-                self.aggregations[dev.id] = aggregation
+                aggregation = InverterListAggregation(
+                    device,
+                    properties['inverterList'],
+                    properties['inverterListState'],
+                    properties['inverterListOperation']
+                )
+                self.aggregations[device.id] = aggregation
+                self.add_dependencies(device.id, [])
 
             elif aggregation_type == "aggregationList":
-                aggregations = [self.aggregations[str(aggregation_id)] for aggregation_id in properties["aggregationList"]]
-                operation = properties["aggregationListOperation"]
-                aggregation = AggregationListAggregation(dev, aggregations, operation)
-                self.aggregations[dev.id] = aggregation
+                aggregation = AggregationListAggregation(
+                    device,
+                    properties['aggregationList'],
+                    properties['aggregationListOperation']
+                )
+                self.aggregations[device.id] = aggregation
+
+                self.add_dependencies(device.id, [int(d) for d in properties['aggregationList']])
 
             elif aggregation_type == "inverterToInverter":
-                inverter1 = self.inverters.get(str(properties["inverterToInverter_Inverter1"]))
-                inverter1_state = properties["inverterToInverter_Inverter1State"]
-                inverter2 = self.inverters.get(str(properties["inverterToInverter_Inverter2"]))
-                inverter2_state = properties["inverterToInverter_Inverter2State"]
-                operation = properties["inverterToInverterOperation"]
                 aggregation = InverterToInverterAggregation(
-                    dev,
-                    inverter1,
-                    inverter1_state,
-                    inverter2,
-                    inverter2_state,
-                    operation
+                    device,
+                    int(properties['inverterToInverter_Inverter1']),
+                    properties['inverterToInverter_Inverter1State'],
+                    int(properties['inverterToInverter_Inverter2']),
+                    properties['inverterToInverter_Inverter2State'],
+                    properties['inverterToInverterOperation']
                 )
-                self.aggregations[dev.id] = aggregation
+                self.aggregations[device.id] = aggregation
+                self.add_dependencies(device.id, [])
 
             elif aggregation_type == "aggregationToAggregation":
-                aggregation_1 = self.aggregations.get(str(properties["aggregationToAggregation_Aggregation1"]))
-                aggregation_2 = self.aggregations.get(str(properties["aggregationToAggregation_Aggregation2"]))
-                operation = properties["aggregationToAggregationOperation"]
-                aggregation = AggregationToAggregationAggregation(dev, aggregation_1, aggregation_2, operation)
-                self.aggregations[dev.id] = aggregation
+                aggregation = AggregationToAggregationAggregation(
+                    device,
+                    int(properties['aggregationToAggregation_Aggregation1']),
+                    int(properties['aggregationToAggregation_Aggregation2']),
+                    properties['aggregationToAggregationOperation']
+                )
+                self.aggregations[device.id] = aggregation
+                self.add_dependencies(
+                    device.id,
+                    [
+                        int(properties['aggregationToAggregation_Aggregation1']),
+                        int(properties['aggregationToAggregation_Aggregation2'])
+                    ]
+                )
+
+            elif aggregation_type == "aggregationToInverter":
+                aggregation = AggregationToInverterAggregation(
+                    device,
+                    int(properties['aggregationToInverter_Aggregation']),
+                    int(properties['aggregationToInverter_Inverter']),
+                    properties['aggregationToInverter_InverterState'],
+                    properties['aggregationToInverterOperation']
+                )
+                self.aggregations[device.id] = aggregation
+                self.add_dependencies(device.id, [int(properties['aggregationToInverter_Aggregation'])])
+
+            elif aggregation_type == "inverterToAggregation":
+                aggregation = InverterToAggregationAggregation(
+                    device,
+                    int(properties['aggregationToInverter_Inverter']),
+                    properties['aggregationToInverter_InverterState'],
+                    int(properties['aggregationToInverter_Aggregation']),
+                    properties['aggregationToInverterOperation']
+                )
+                self.aggregations[device.id] = aggregation
+                self.add_dependencies(device.id, [int(properties['aggregationToInverter_Aggregation'])])
 
         else:
-            indigo.server.log('Unknown device type id: {}'.format(dev.deviceTypeId), type=DISPLAY_NAME)
+            indigo.server.log('Unknown device type id: {}'.format(device.deviceTypeId), type=DISPLAY_NAME)
 
     def deviceStopComm(self, device):
         if device.deviceTypeId == 'smaIndigoInverter' and device.id in self.inverters.keys():
-            inverter = self.inverters.get(device.id)
-            self.modBusService.disconnect_inverter(inverter)
+            client = self.inverters.get(device.id)
+            client.close()
             del self.inverters[device.id]
             indigo.server.log('Stopped communication with inverter device: {}'.format(device.name),
                               type=DISPLAY_NAME)
@@ -114,45 +158,88 @@ class Plugin(indigo.PluginBase):
 
     ###########################
 
+    def add_dependencies(self, device_id, dependency_list):
+        dependency_set = self.dependencies.get(device_id, set())
+        for element in dependency_set:
+            dependency_set.add(element)
+        self.dependencies[device_id] = dependency_set
+
     def update_inverters(self):
         """
         Updates the states of all Inverters.
         If, for some reason, a ConnectionError is found, it attempts to reconnect the inverter
         """
-        for inverter in self.inverters.values():
+        for device_id, client in self.inverters.items():
             try:
-                states = self.modBusService.get_inverter_states(inverter)
-                inverter.update_states(states)
-                IndigoService.update_inverter_states(inverter)
+                states = client.generate_states()
+                IndigoService.update_inverter_states(device_id, states)
 
-            except ConnectionError:
-                indigo.server.log('Lost connection to inverter: {}. Reconnecting...'.format(inverter.device.name),
+            except ModbusException:
+                indigo.server.log('Lost connection to inverter: {}. Reconnecting...'.format(device_id),
                                   type=DISPLAY_NAME)
-                self.modBusService.reconnect_inverter(inverter)
+                client.close()
+                client.connect()
             except AttributeError:
-                indigo.server.log('Lost connection to inverter: {}. Reconnecting...'.format(inverter.device.name),
+                indigo.server.log('Lost connection to inverter: {}. Reconnecting...'.format(device_id),
                                   type=DISPLAY_NAME)
-                self.modBusService.reconnect_inverter(inverter)
+                client.close()
+                client.connect()
 
     def update_aggregations(self):
         """
         Updates the value state of all aggregations.
         """
-        for aggregation in self.aggregations.values():
+        no_dependency_aggregations = set(filter(lambda x: len(self.dependencies[x]) == 0, self.dependencies))
+
+        for aggregation_id in no_dependency_aggregations:
+            aggregation = self.aggregations.get(aggregation_id)
             aggregation.calculate_value()
             IndigoService.update_aggregation_states(aggregation)
+
+        aggregations_with_dependencies = set(filter(lambda x: len(self.dependencies[x]) == 0, self.dependencies))
+
+        processed = no_dependency_aggregations
+
+        for aggregation_id in aggregations_with_dependencies:
+            if aggregation_id not in processed:
+                self._update_aggregations_rec(aggregation_id, processed)
+
+    def _update_aggregations_rec(self, device_id, processed):
+        # Process dependencies
+        for dependency_id in self.dependencies[device_id]:
+            if dependency_id not in processed:
+                if not self._update_aggregations_rec(dependency_id, processed):
+                    indigo.server.log(
+                        'Unable to load device {} dependencies.'.format(device_id) +
+                        'Maybe some of them were deleted. Device will be disabled.',
+                        type=DISPLAY_NAME
+                    )
+                    del self.aggregations[device_id]
+                    del self.dependencies[device_id]
+                    return False
+
+        aggregation = self.aggregations.get(device_id)
+        if aggregation is None:
+            return False
+
+        aggregation.calculate_value()
+        IndigoService.update_aggregation_states(aggregation)
+
+        processed.add(device_id)
+        return True
 
     def reconnect_all(self):
         """
         Reconnects all devices
         """
-        indigo.server.log('Reconnecting all devices........%d devices' % len(self.devices))
+        indigo.server.log('Reconnecting all devices........%d devices' % len(self.inverters))
 
-        for inverter in self.inverters.values():
-            if self.modBusService.reconnect_inverter(inverter):
-                indigo.server.log('    - {} --- OK'.format(inverter.device.name), type=DISPLAY_NAME)
+        for device_id, client in self.inverters.items():
+            client.close()
+            if client.connect():
+                indigo.server.log('    - {} --- OK'.format(device_id), type=DISPLAY_NAME)
             else:
-                indigo.server.log('    - {} --- FAILED'.format(inverter.device.name), type=DISPLAY_NAME)
+                indigo.server.log('    - {} --- FAILED'.format(device_id), type=DISPLAY_NAME)
 
     def reconnect_device(self, valuesDict, typeId):
         """

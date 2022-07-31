@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <Devices>
     <Device type="custom" id="smaIndigoInverter">
-        <Name>Solar Inverter</Name>
+        <Name>Inverter</Name>
         <States>
         	<State id="serialNumber">
         		<ValueType>Number</ValueType>
@@ -128,6 +128,8 @@
 					<Option value="aggregationList">Aggregation List</Option>
 					<Option value="aggregationToAggregation">Aggregation to aggregation</Option>
 					<Option value="inverterToInverter">Inverter to inverter</Option>
+					<Option value="aggregationToInverter">Aggregation to inverter</Option>
+					<Option value="inverterToAggregation">Inverter to Aggregation</Option>
 				</List>
 			</Field>
 			<Field id="sep1" type="separator"/>
@@ -194,7 +196,7 @@
 				<List>
 					<Option value="sum">Sum</Option>
 					<Option value="subtraction">Subtraction</Option>
-					<Option value="division">Average</Option>
+					<Option value="division">Division</Option>
 					<Option value="multiplication">Multiplication</Option>
 					<Option value="average">Average</Option>
 					<Option value="min">Min</Option>
@@ -219,7 +221,67 @@
 				<List>
 					<Option value="sum">Sum</Option>
 					<Option value="subtraction">Subtraction</Option>
-					<Option value="division">Average</Option>
+					<Option value="division">Division</Option>
+					<Option value="multiplication">Multiplication</Option>
+					<Option value="average">Average</Option>
+					<Option value="min">Min</Option>
+					<Option value="max">Max</Option>
+				</List>
+			</Field>
+
+
+			<!-- Aggregation to Inverter -->
+			<Field id="aggregationToInverter_Aggregation" type="menu" visibleBindingId="aggregationType" visibleBindingValue="aggregationToInverter">
+				<Label>Aggregation: </Label>
+				<List class="indigo.devices" filter="self.smaIndigoAggregation"/>
+			</Field>
+
+			<Field id="aggregationToInverter_Inverter" type="menu" visibleBindingId="aggregationType" visibleBindingValue="aggregationToInverter">
+				<Label>Inverter: </Label>
+				<List class="indigo.devices" filter="self.smaIndigoInverter"/>
+			</Field>
+
+			<Field id="aggregationToInverter_InverterState" type="menu" visibleBindingId="aggregationType" visibleBindingValue="aggregationToInverter">
+				<Label>State: </Label>
+				<List class="self" method="get_available_inverter_states"/>
+			</Field>
+
+			<Field id="aggregationToInverterOperation" type="menu" visibleBindingId="aggregationType" visibleBindingValue="aggregationToInverter">
+				<Label>Operation: </Label>
+				<List>
+					<Option value="sum">Sum</Option>
+					<Option value="subtraction">Subtraction</Option>
+					<Option value="division">Division</Option>
+					<Option value="multiplication">Multiplication</Option>
+					<Option value="average">Average</Option>
+					<Option value="min">Min</Option>
+					<Option value="max">Max</Option>
+				</List>
+			</Field>
+
+
+			<!-- Inverter to Aggregation -->
+			<Field id="inverterToAggregation_Inverter" type="menu" visibleBindingId="aggregationType" visibleBindingValue="inverterToAggregation">
+				<Label>Inverter: </Label>
+				<List class="indigo.devices" filter="self.smaIndigoInverter"/>
+			</Field>
+
+			<Field id="inverterToAggregation_InverterState" type="menu" visibleBindingId="aggregationType" visibleBindingValue="inverterToAggregation">
+				<Label>State: </Label>
+				<List class="self" method="get_available_inverter_states"/>
+			</Field>
+
+			<Field id="inverterToAggregation_Aggregation" type="menu" visibleBindingId="aggregationType" visibleBindingValue="inverterToAggregation">
+				<Label>Aggregation: </Label>
+				<List class="indigo.devices" filter="self.smaIndigoAggregation"/>
+			</Field>
+
+			<Field id="inverterToAggregationOperation" type="menu" visibleBindingId="aggregationType" visibleBindingValue="inverterToAggregation">
+				<Label>Operation: </Label>
+				<List>
+					<Option value="sum">Sum</Option>
+					<Option value="subtraction">Subtraction</Option>
+					<Option value="division">Division</Option>
 					<Option value="multiplication">Multiplication</Option>
 					<Option value="average">Average</Option>
 					<Option value="min">Min</Option>
