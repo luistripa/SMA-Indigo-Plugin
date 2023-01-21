@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <Devices>
-    <Device type="custom" id="solarInverter">
-        <Name>Solar Inverter</Name>
+    <Device type="custom" id="smaIndigoInverter">
+        <Name>Inverter</Name>
         <States>
         	<State id="serialNumber">
         		<ValueType>Number</ValueType>
@@ -63,7 +63,7 @@
         		<TriggerLabel>Operation Time</TriggerLabel>
         		<ControlPageLabel>Operation Time</ControlPageLabel>
         	</State>
-        	<State id="feedinTime">
+        	<State id="feedInTime">
         		<ValueType>Number</ValueType>
         		<TriggerLabel>Feed-in Time</TriggerLabel>
         		<ControlPageLabel>Feed-in Time</ControlPageLabel>
@@ -109,64 +109,187 @@
             </Field>
         </ConfigUI>
     </Device>
-    
-    <Device type="custom" id="inverterBundle">
-        <Name>Inverter Bundle</Name>
-        <States>
-			<State id="inverterCount">
+
+	<Device type="custom" id="smaIndigoAggregation">
+		<Name>Aggregation</Name>
+		<States>
+			<State id="value">
 				<ValueType>Number</ValueType>
-				<TriggerLabel>Inverter Count</TriggerLabel>
-				<ControlPageLabel>Inverter Count</ControlPageLabel>
+				<TriggerLabel>Value</TriggerLabel>
+				<ControlPageLabel>Value</ControlPageLabel>
 			</State>
+		</States>
 
-            <State id="outputPower">
-                <ValueType>Number</ValueType>
-                <TriggerLabel>Output Power</TriggerLabel>
-                <ControlPageLabel>Output Power</ControlPageLabel>
-            </State>
-
-			<State id="powerFromGrid">
-				<ValueType>Number</ValueType>
-				<TriggerLabel>Power From Grid</TriggerLabel>
-				<ControlPageLabel>Power From Grid</ControlPageLabel>
-			</State>
-
-			<State id="powerToGrid">
-				<ValueType>Number</ValueType>
-				<TriggerLabel>Power To Grid</TriggerLabel>
-				<ControlPageLabel>Power To Grid</ControlPageLabel>
-			</State>
-        </States>
-
-
-        <ConfigUI>
-
-			<Field id="label1" type="label">
-				<Label>
-					Define in what format the data shall be presented.
-					Average creates an average value between the values of all inverters.
-				</Label>
+		<ConfigUI>
+			<Field id="aggregationType" type="menu" defaultValue="inverterList">
+				<Label>Aggregation Type: </Label>
+				<List>
+					<Option value="inverterList">Inverter List</Option>
+					<Option value="aggregationList">Aggregation List</Option>
+					<Option value="aggregationToAggregation">Aggregation to aggregation</Option>
+					<Option value="inverterToInverter">Inverter to inverter</Option>
+					<Option value="aggregationToInverter">Aggregation to inverter</Option>
+					<Option value="inverterToAggregation">Inverter to Aggregation</Option>
+				</List>
 			</Field>
-
-			<Field id="outputPowerAverage" type="checkbox" default="false">
-				<Label>Use output power as average:</Label>
-			</Field>
-
-			<Field id="powerFromGridAverage" type="checkbox" default="false">
-				<Label>Use power from grid as average:</Label>
-			</Field>
-
-			<Field id="powerToGridAverage" type="checkbox" default="false">
-				<Label>Use power to grid as average:</Label>
-			</Field>
-
 			<Field id="sep1" type="separator"/>
 
-            <Field id="inverterList" type="list">
-                <Label>All Inverters:</Label>
-                <List class="indigo.devices" filter="self.solarInverter"/>
-            </Field>
-        </ConfigUI>
-    </Device>
+
+			<!-- Inverter List -->
+			<Field id="inverterList" type="list" visibleBindingId="aggregationType" visibleBindingValue="inverterList">
+				<Label>Inverter List: </Label>
+				<List class="indigo.devices" filter="self.smaIndigoInverter"/>
+			</Field>
+
+			<Field id="inverterListState" type="menu" visibleBindingId="aggregationType" visibleBindingValue="inverterList">
+				<Label>Inverter State: </Label>
+				<List class="self" method="get_available_inverter_states"/>
+			</Field>
+
+			<Field id="inverterListOperation" type="menu" visibleBindingId="aggregationType" visibleBindingValue="inverterList">
+				<Label>Operation: </Label>
+				<List>
+					<Option value="sum">Sum</Option>
+					<Option value="average">Average</Option>
+				</List>
+			</Field>
+
+
+			<!-- Aggregation List -->
+			<Field id="aggregationList" type="list" visibleBindingId="aggregationType" visibleBindingValue="aggregationList">
+				<Label>Aggregation List</Label>
+				<List class="indigo.devices" filter="self.smaIndigoAggregation"/>
+			</Field>
+
+			<Field id="aggregationListOperation" type="menu" visibleBindingId="aggregationType" visibleBindingValue="aggregationList">
+				<Label>Operation: </Label>
+				<List>
+					<Option value="sum">Sum</Option>
+					<Option value="average">Average</Option>
+				</List>
+			</Field>
+
+
+			<!-- Inverter to Inverter -->
+			<Field id="inverterToInverter_Inverter1" type="menu" visibleBindingId="aggregationType" visibleBindingValue="inverterToInverter">
+				<Label>First Inverter</Label>
+				<List class="indigo.devices" filter="self.smaIndigoInverter"/>
+			</Field>
+
+			<Field id="inverterToInverter_Inverter1State" type="menu" visibleBindingId="aggregationType" visibleBindingValue="inverterToInverter">
+				<Label>State: </Label>
+				<List class="self" method="get_available_inverter_states"/>
+			</Field>
+
+			<Field id="inverterToInverter_Inverter2" type="menu" visibleBindingId="aggregationType" visibleBindingValue="inverterToInverter">
+				<Label>Second Inverter</Label>
+				<List class="indigo.devices" filter="self.smaIndigoInverter"/>
+			</Field>
+
+			<Field id="inverterToInverter_Inverter2State" type="menu" visibleBindingId="aggregationType" visibleBindingValue="inverterToInverter">
+				<Label>State: </Label>
+				<List class="self" method="get_available_inverter_states"/>
+			</Field>
+
+			<Field id="inverterToInverterOperation" type="menu" visibleBindingId="aggregationType" visibleBindingValue="inverterToInverter">
+				<Label>Operation: </Label>
+				<List>
+					<Option value="sum">Sum</Option>
+					<Option value="subtraction">Subtraction</Option>
+					<Option value="division">Division</Option>
+					<Option value="multiplication">Multiplication</Option>
+					<Option value="average">Average</Option>
+					<Option value="min">Min</Option>
+					<Option value="max">Max</Option>
+				</List>
+			</Field>
+
+
+			<!-- Aggregation to Aggregation -->
+			<Field id="aggregationToAggregation_Aggregation1" type="menu" visibleBindingId="aggregationType" visibleBindingValue="aggregationToAggregation">
+				<Label>First Aggregation: </Label>
+				<List class="indigo.devices" filter="self.smaIndigoAggregation"/>
+			</Field>
+
+			<Field id="aggregationToAggregation_Aggregation2" type="menu" visibleBindingId="aggregationType" visibleBindingValue="aggregationToAggregation">
+				<Label>Second Aggregation: </Label>
+				<List class="indigo.devices" filter="self.smaIndigoAggregation"/>
+			</Field>
+
+			<Field id="aggregationToAggregationOperation" type="menu" visibleBindingId="aggregationType" visibleBindingValue="aggregationToAggregation">
+				<Label>Operation: </Label>
+				<List>
+					<Option value="sum">Sum</Option>
+					<Option value="subtraction">Subtraction</Option>
+					<Option value="division">Division</Option>
+					<Option value="multiplication">Multiplication</Option>
+					<Option value="average">Average</Option>
+					<Option value="min">Min</Option>
+					<Option value="max">Max</Option>
+				</List>
+			</Field>
+
+
+			<!-- Aggregation to Inverter -->
+			<Field id="aggregationToInverter_Aggregation" type="menu" visibleBindingId="aggregationType" visibleBindingValue="aggregationToInverter">
+				<Label>Aggregation: </Label>
+				<List class="indigo.devices" filter="self.smaIndigoAggregation"/>
+			</Field>
+
+			<Field id="aggregationToInverter_Inverter" type="menu" visibleBindingId="aggregationType" visibleBindingValue="aggregationToInverter">
+				<Label>Inverter: </Label>
+				<List class="indigo.devices" filter="self.smaIndigoInverter"/>
+			</Field>
+
+			<Field id="aggregationToInverter_InverterState" type="menu" visibleBindingId="aggregationType" visibleBindingValue="aggregationToInverter">
+				<Label>State: </Label>
+				<List class="self" method="get_available_inverter_states"/>
+			</Field>
+
+			<Field id="aggregationToInverterOperation" type="menu" visibleBindingId="aggregationType" visibleBindingValue="aggregationToInverter">
+				<Label>Operation: </Label>
+				<List>
+					<Option value="sum">Sum</Option>
+					<Option value="subtraction">Subtraction</Option>
+					<Option value="division">Division</Option>
+					<Option value="multiplication">Multiplication</Option>
+					<Option value="average">Average</Option>
+					<Option value="min">Min</Option>
+					<Option value="max">Max</Option>
+				</List>
+			</Field>
+
+
+			<!-- Inverter to Aggregation -->
+			<Field id="inverterToAggregation_Inverter" type="menu" visibleBindingId="aggregationType" visibleBindingValue="inverterToAggregation">
+				<Label>Inverter: </Label>
+				<List class="indigo.devices" filter="self.smaIndigoInverter"/>
+			</Field>
+
+			<Field id="inverterToAggregation_InverterState" type="menu" visibleBindingId="aggregationType" visibleBindingValue="inverterToAggregation">
+				<Label>State: </Label>
+				<List class="self" method="get_available_inverter_states"/>
+			</Field>
+
+			<Field id="inverterToAggregation_Aggregation" type="menu" visibleBindingId="aggregationType" visibleBindingValue="inverterToAggregation">
+				<Label>Aggregation: </Label>
+				<List class="indigo.devices" filter="self.smaIndigoAggregation"/>
+			</Field>
+
+			<Field id="inverterToAggregationOperation" type="menu" visibleBindingId="aggregationType" visibleBindingValue="inverterToAggregation">
+				<Label>Operation: </Label>
+				<List>
+					<Option value="sum">Sum</Option>
+					<Option value="subtraction">Subtraction</Option>
+					<Option value="division">Division</Option>
+					<Option value="multiplication">Multiplication</Option>
+					<Option value="average">Average</Option>
+					<Option value="min">Min</Option>
+					<Option value="max">Max</Option>
+				</List>
+			</Field>
+
+		</ConfigUI>
+	</Device>
 
 </Devices>
