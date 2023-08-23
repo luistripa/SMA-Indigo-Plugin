@@ -13,11 +13,6 @@
         		<TriggerLabel>AC Power</TriggerLabel>
         		<ControlPageLabel>AC Power</ControlPageLabel>
         	</State>
-        	<State id="acApparentPower">
-        		<ValueType>Number</ValueType>
-        		<TriggerLabel>AC Apparent Power</TriggerLabel>
-        		<ControlPageLabel>AC Apparent Power</ControlPageLabel>
-        	</State>
         	<State id="acCurrent">
         		<ValueType>Number</ValueType>
         		<TriggerLabel>AC Current</TriggerLabel>
@@ -32,16 +27,6 @@
         		<ValueType>Number</ValueType>
         		<TriggerLabel>Grid Frequency</TriggerLabel>
         		<ControlPageLabel>Grid Frequency</ControlPageLabel>
-        	</State>
-        	<State id="dcPower">
-        		<ValueType>Number</ValueType>
-        		<TriggerLabel>DC Power</TriggerLabel>
-        		<ControlPageLabel>DC Power</ControlPageLabel>
-        	</State>
-        	<State id="dcInputVoltage">
-        		<ValueType>Number</ValueType>
-        		<TriggerLabel>DC Input Voltage</TriggerLabel>
-        		<ControlPageLabel>DC Input Voltage</ControlPageLabel>
         	</State>
         	<State id="deviceTemperature">
         		<ValueType>Number</ValueType>
@@ -68,36 +53,6 @@
         		<TriggerLabel>Feed-in Time</TriggerLabel>
         		<ControlPageLabel>Feed-in Time</ControlPageLabel>
         	</State>
-        	<State id="intermediateVoltage">
-        		<ValueType>Number</ValueType>
-        		<TriggerLabel>Intermediate Voltage</TriggerLabel>
-        		<ControlPageLabel>Intermediate Voltage</ControlPageLabel>
-        	</State>
-        	<State id="isolationResistance">
-        		<ValueType>Number</ValueType>
-        		<TriggerLabel>Isolation Resistance</TriggerLabel>
-        		<ControlPageLabel>Isolation Resistance</ControlPageLabel>
-        	</State>
-        	<State id="totalEnergyFromGrid">
-        		<ValueType>Number</ValueType>
-        		<TriggerLabel>Energy From Grid</TriggerLabel>
-        		<ControlPageLabel>Total Energy From Grid</ControlPageLabel>
-        	</State>
-        	<State id="totalEnergyToGrid">
-        		<ValueType>Number</ValueType>
-        		<TriggerLabel>Energy To Grid</TriggerLabel>
-        		<ControlPageLabel>Total Energy To Grid</ControlPageLabel>
-        	</State>
-        	<State id="powerFromGrid">
-        		<ValueType>Number</ValueType>
-        		<TriggerLabel>Power From Grid</TriggerLabel>
-        		<ControlPageLabel>Power From Grid</ControlPageLabel>
-        	</State>
-        	<State id="powerToGrid">
-        		<ValueType>Number</ValueType>
-        		<TriggerLabel>Power To Grid</TriggerLabel>
-        		<ControlPageLabel>Power To Grid</ControlPageLabel>
-        	</State>
         </States>
         
         <ConfigUI>
@@ -110,185 +65,85 @@
         </ConfigUI>
     </Device>
 
-	<Device type="custom" id="smaIndigoAggregation">
-		<Name>Aggregation</Name>
+	<Device type="custom" id="smaIndigoHomeManager">
+		<Name>Home Manager</Name>
 		<States>
-			<State id="value">
+			<State id="totalPowerFromGrid">
 				<ValueType>Number</ValueType>
-				<TriggerLabel>Value</TriggerLabel>
-				<ControlPageLabel>Value</ControlPageLabel>
+				<TriggerLabel>Total Power From Grid</TriggerLabel>
+				<ControlPageLabel>Total Power From Grid</ControlPageLabel>
+			</State>
+			<State id="totalPowerToGrid">
+				<ValueType>Number</ValueType>
+				<TriggerLabel>Total Power To Grid</TriggerLabel>
+				<ControlPageLabel>Total Power To Grid</ControlPageLabel>
+			</State>
+			<State id="phase1PowerFromGrid">
+				<ValueType>Number</ValueType>
+				<TriggerLabel>Phase 1 Power From Grid</TriggerLabel>
+				<ControlPageLabel>Phase 1 Power From Grid</ControlPageLabel>
+			</State>
+			<State id="phase1PowerToGrid">
+				<ValueType>Number</ValueType>
+				<TriggerLabel>Phase 1 Power To Grid</TriggerLabel>
+				<ControlPageLabel>Phase 1 Power To Grid</ControlPageLabel>
+			</State>
+			<State id="phase2PowerFromGrid">
+				<ValueType>Number</ValueType>
+				<TriggerLabel>Phase 2 Power From Grid</TriggerLabel>
+				<ControlPageLabel>Phase 2 Power From Grid</ControlPageLabel>
+			</State>
+			<State id="phase2PowerToGrid">
+				<ValueType>Number</ValueType>
+				<TriggerLabel>Phase 2 Power To Grid</TriggerLabel>
+				<ControlPageLabel>Phase 2 Power To Grid</ControlPageLabel>
+			</State>
+			<State id="phase3PowerFromGrid">
+				<ValueType>Number</ValueType>
+				<TriggerLabel>Phase 3 Power From Grid</TriggerLabel>
+				<ControlPageLabel>Phase 3 Power From Grid</ControlPageLabel>
+			</State>
+			<State id="phase3PowerToGrid">
+				<ValueType>Number</ValueType>
+				<TriggerLabel>Phase 3 Power To Grid</TriggerLabel>
+				<ControlPageLabel>Phase 3 Power To Grid</ControlPageLabel>
 			</State>
 		</States>
-
 		<ConfigUI>
-			<Field id="aggregationType" type="menu" defaultValue="inverterList">
-				<Label>Aggregation Type: </Label>
-				<List>
-					<Option value="inverterList">Inverter List</Option>
-					<Option value="aggregationList">Aggregation List</Option>
-					<Option value="aggregationToAggregation">Aggregation to aggregation</Option>
-					<Option value="inverterToInverter">Inverter to inverter</Option>
-					<Option value="aggregationToInverter">Aggregation to inverter</Option>
-					<Option value="inverterToAggregation">Inverter to Aggregation</Option>
-				</List>
+			<Field id="label" type="label">
+				<Label>No need of configuration. You can press save</Label>
 			</Field>
-			<Field id="sep1" type="separator"/>
+		</ConfigUI>
+	</Device>
 
-
-			<!-- Inverter List -->
-			<Field id="inverterList" type="list" visibleBindingId="aggregationType" visibleBindingValue="inverterList">
-				<Label>Inverter List: </Label>
-				<List class="indigo.devices" filter="self.smaIndigoInverter"/>
+	<Device type="custom" id="smaIndigoLogicalMeter">
+		<Name>Logical Meter</Name>
+		<States>
+			<State id="totalProduction">
+				<ValueType>Number</ValueType>
+				<TriggerLabel>Total Production</TriggerLabel>
+				<ControlPageLabel>Total Production</ControlPageLabel>
+			</State>
+			<State id="totalConsumption">
+				<ValueType>Number</ValueType>
+				<TriggerLabel>Total Consumption</TriggerLabel>
+				<ControlPageLabel>Total Consumption</ControlPageLabel>
+			</State>
+			<State id="solarConsumption">
+				<ValueType>Number</ValueType>
+				<TriggerLabel>Solar Consumption</TriggerLabel>
+				<ControlPageLabel>Solar Consumption</ControlPageLabel>
+			</State>
+			<State id="solarConsumptionPercentage">
+				<ValueType>Number</ValueType>
+				<TriggerLabel>Solar Consumption Percentage</TriggerLabel>
+				<ControlPageLabel>Solar Consumption Percentage</ControlPageLabel>
+			</State>
+		</States>
+		<ConfigUI>
+			<Field id="label" type="label">
+				<Label>No need of configuration. You can press save</Label>
 			</Field>
-
-			<Field id="inverterListState" type="menu" visibleBindingId="aggregationType" visibleBindingValue="inverterList">
-				<Label>Inverter State: </Label>
-				<List class="self" method="get_available_inverter_states"/>
-			</Field>
-
-			<Field id="inverterListOperation" type="menu" visibleBindingId="aggregationType" visibleBindingValue="inverterList">
-				<Label>Operation: </Label>
-				<List>
-					<Option value="sum">Sum</Option>
-					<Option value="average">Average</Option>
-				</List>
-			</Field>
-
-
-			<!-- Aggregation List -->
-			<Field id="aggregationList" type="list" visibleBindingId="aggregationType" visibleBindingValue="aggregationList">
-				<Label>Aggregation List</Label>
-				<List class="indigo.devices" filter="self.smaIndigoAggregation"/>
-			</Field>
-
-			<Field id="aggregationListOperation" type="menu" visibleBindingId="aggregationType" visibleBindingValue="aggregationList">
-				<Label>Operation: </Label>
-				<List>
-					<Option value="sum">Sum</Option>
-					<Option value="average">Average</Option>
-				</List>
-			</Field>
-
-
-			<!-- Inverter to Inverter -->
-			<Field id="inverterToInverter_Inverter1" type="menu" visibleBindingId="aggregationType" visibleBindingValue="inverterToInverter">
-				<Label>First Inverter</Label>
-				<List class="indigo.devices" filter="self.smaIndigoInverter"/>
-			</Field>
-
-			<Field id="inverterToInverter_Inverter1State" type="menu" visibleBindingId="aggregationType" visibleBindingValue="inverterToInverter">
-				<Label>State: </Label>
-				<List class="self" method="get_available_inverter_states"/>
-			</Field>
-
-			<Field id="inverterToInverter_Inverter2" type="menu" visibleBindingId="aggregationType" visibleBindingValue="inverterToInverter">
-				<Label>Second Inverter</Label>
-				<List class="indigo.devices" filter="self.smaIndigoInverter"/>
-			</Field>
-
-			<Field id="inverterToInverter_Inverter2State" type="menu" visibleBindingId="aggregationType" visibleBindingValue="inverterToInverter">
-				<Label>State: </Label>
-				<List class="self" method="get_available_inverter_states"/>
-			</Field>
-
-			<Field id="inverterToInverterOperation" type="menu" visibleBindingId="aggregationType" visibleBindingValue="inverterToInverter">
-				<Label>Operation: </Label>
-				<List>
-					<Option value="sum">Sum</Option>
-					<Option value="subtraction">Subtraction</Option>
-					<Option value="division">Division</Option>
-					<Option value="multiplication">Multiplication</Option>
-					<Option value="average">Average</Option>
-					<Option value="min">Min</Option>
-					<Option value="max">Max</Option>
-				</List>
-			</Field>
-
-
-			<!-- Aggregation to Aggregation -->
-			<Field id="aggregationToAggregation_Aggregation1" type="menu" visibleBindingId="aggregationType" visibleBindingValue="aggregationToAggregation">
-				<Label>First Aggregation: </Label>
-				<List class="indigo.devices" filter="self.smaIndigoAggregation"/>
-			</Field>
-
-			<Field id="aggregationToAggregation_Aggregation2" type="menu" visibleBindingId="aggregationType" visibleBindingValue="aggregationToAggregation">
-				<Label>Second Aggregation: </Label>
-				<List class="indigo.devices" filter="self.smaIndigoAggregation"/>
-			</Field>
-
-			<Field id="aggregationToAggregationOperation" type="menu" visibleBindingId="aggregationType" visibleBindingValue="aggregationToAggregation">
-				<Label>Operation: </Label>
-				<List>
-					<Option value="sum">Sum</Option>
-					<Option value="subtraction">Subtraction</Option>
-					<Option value="division">Division</Option>
-					<Option value="multiplication">Multiplication</Option>
-					<Option value="average">Average</Option>
-					<Option value="min">Min</Option>
-					<Option value="max">Max</Option>
-				</List>
-			</Field>
-
-
-			<!-- Aggregation to Inverter -->
-			<Field id="aggregationToInverter_Aggregation" type="menu" visibleBindingId="aggregationType" visibleBindingValue="aggregationToInverter">
-				<Label>Aggregation: </Label>
-				<List class="indigo.devices" filter="self.smaIndigoAggregation"/>
-			</Field>
-
-			<Field id="aggregationToInverter_Inverter" type="menu" visibleBindingId="aggregationType" visibleBindingValue="aggregationToInverter">
-				<Label>Inverter: </Label>
-				<List class="indigo.devices" filter="self.smaIndigoInverter"/>
-			</Field>
-
-			<Field id="aggregationToInverter_InverterState" type="menu" visibleBindingId="aggregationType" visibleBindingValue="aggregationToInverter">
-				<Label>State: </Label>
-				<List class="self" method="get_available_inverter_states"/>
-			</Field>
-
-			<Field id="aggregationToInverterOperation" type="menu" visibleBindingId="aggregationType" visibleBindingValue="aggregationToInverter">
-				<Label>Operation: </Label>
-				<List>
-					<Option value="sum">Sum</Option>
-					<Option value="subtraction">Subtraction</Option>
-					<Option value="division">Division</Option>
-					<Option value="multiplication">Multiplication</Option>
-					<Option value="average">Average</Option>
-					<Option value="min">Min</Option>
-					<Option value="max">Max</Option>
-				</List>
-			</Field>
-
-
-			<!-- Inverter to Aggregation -->
-			<Field id="inverterToAggregation_Inverter" type="menu" visibleBindingId="aggregationType" visibleBindingValue="inverterToAggregation">
-				<Label>Inverter: </Label>
-				<List class="indigo.devices" filter="self.smaIndigoInverter"/>
-			</Field>
-
-			<Field id="inverterToAggregation_InverterState" type="menu" visibleBindingId="aggregationType" visibleBindingValue="inverterToAggregation">
-				<Label>State: </Label>
-				<List class="self" method="get_available_inverter_states"/>
-			</Field>
-
-			<Field id="inverterToAggregation_Aggregation" type="menu" visibleBindingId="aggregationType" visibleBindingValue="inverterToAggregation">
-				<Label>Aggregation: </Label>
-				<List class="indigo.devices" filter="self.smaIndigoAggregation"/>
-			</Field>
-
-			<Field id="inverterToAggregationOperation" type="menu" visibleBindingId="aggregationType" visibleBindingValue="inverterToAggregation">
-				<Label>Operation: </Label>
-				<List>
-					<Option value="sum">Sum</Option>
-					<Option value="subtraction">Subtraction</Option>
-					<Option value="division">Division</Option>
-					<Option value="multiplication">Multiplication</Option>
-					<Option value="average">Average</Option>
-					<Option value="min">Min</Option>
-					<Option value="max">Max</Option>
-				</List>
-			</Field>
-
 		</ConfigUI>
 	</Device>
 

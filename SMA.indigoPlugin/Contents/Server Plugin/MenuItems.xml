@@ -14,10 +14,9 @@ All plugin Menu Items that appear on the dropdown menu
         <ConfigUI>
             <Field id="targetDevice" type="menu">
                 <Label>Target device:</Label>
-                <List class="self" filter="self.smaIndigoInverter"/>
+                <List class="indigo.devices" filter="self"/>
             </Field>
         </ConfigUI>
     </MenuItem>
-
 
 </MenuItems>

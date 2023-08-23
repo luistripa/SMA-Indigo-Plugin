@@ -1,38 +1,39 @@
+from typing import Dict
+
 import indigo
 
+from comms import InverterClient, HomeManagerClientThread
 from objects import *
-from services import IndigoService
 from pymodbus.exceptions import ModbusException
-
-from comms import Client
-
-
-DISPLAY_NAME = 'SMA Energy'
 
 
 class Plugin(indigo.PluginBase):
-    def __init__(self, pluginId, pluginDisplayName, pluginVersion, pluginPrefs):
-        indigo.PluginBase.__init__(self, pluginId, pluginDisplayName, pluginVersion, pluginPrefs)
 
-        """
-        Stores all Inverter objects in the system.
-        Key is device id
-        Value is Client object
-        """
-        self.inverters = dict()
+    inverters: Dict[int, InverterClient] = dict()
+    """
+    Stores all the Inverter objects used in the plugin.
+    keys: device ids
+    values: Client objects (see comms.py)
+    """
 
-        """
-        Stores all aggregations.
-        Key is device id, Value is Aggregation Subclass object
-        """
-        self.aggregations = dict()
+    home_manager_thread: Optional[HomeManagerClientThread] = None
+    """Represents a HomeManagerClientThread object used to communicate with an Home Manager unit.
+    The first position holds the current device id.
+    The second position holds the HomeManagerClientThread object."""
 
-        """
-        Defines dependencies between devices.
-        Key is device id
-        Value is device dependencies
-        """
-        self.dependencies = dict()
+    logicalMeter: Optional[LogicalMeter] = None
+    """Represents a LogicalMeter object.
+    This object stores two important values:
+        - The total energy being produced in all inverters (this is a simple sum of the values of all inverters)
+        - The total power consumption of the system, which includes the energy produced by inverters and consumed by the system and the energy consumed from the grid.
+    """
+
+    state_update_time: int = 10
+    """Represents the time interval in seconds between each state update."""
+
+    def __init__(self, pluginId: str, pluginDisplayName: str, pluginVersion: str, pluginPrefs: dict):
+        super().__init__(pluginId, pluginDisplayName, pluginVersion, pluginPrefs)
+        self.state_update_time = self._validate_state_update_time(pluginPrefs)
 
     def startup(self):
         pass
@@ -42,230 +43,242 @@ class Plugin(indigo.PluginBase):
         for client in self.inverters.values():
             client.close()
 
+    def closedPrefsConfigUi(self, valuesDict: dict, userCancelled: bool) -> None:
+        if not userCancelled:
+
+            self.state_update_time = self._validate_state_update_time(valuesDict)
+
+    def _validate_state_update_time(self, valuesDict: dict) -> int:
+        try:
+            state_update_time = int(valuesDict.get('stateUpdateTime', 'invalid value'))
+        except ValueError:
+            self.logger.error(f"Invalid value for state update time: {valuesDict.get('stateUpdateTime', None)}. Using default value of 10 seconds.")
+            state_update_time = 10
+        return state_update_time
+
     def runConcurrentThread(self):
         try:
             while True:
-                self.update_inverters()
-                self.update_aggregations()
-                self.sleep(10)
+                self.fetch_inverters_data()
+                self.fetch_home_manager_data()
+                self.update_logic_meter()
+                self.sleep(self.state_update_time)
 
         except self.StopThread:
             self.shutdown()
 
-    def closedPrefsConfigUi(self, valuesDict, userCancelled):
-        if not userCancelled:
-            pass
+    def deviceStartComm(self, dev: indigo.Device) -> None:
+        properties = dev.pluginProps
 
-    def deviceStartComm(self, device):
-        properties = device.pluginProps
+        if dev.deviceTypeId == 'smaIndigoInverter':
+            client = InverterClient(properties['inverterAddress'], int(properties['inverterPort']))
 
-        if device.deviceTypeId == 'smaIndigoInverter':
-            client = Client(properties['inverterAddress'], int(properties['inverterPort']))
-            if client.connect():
-                self.inverters[device.id] = client
-                indigo.server.log('Started communication with inverter device: {}'.format(device.name),
-                                  type=DISPLAY_NAME)
-            else:
-                indigo.server.log('Failed to establish connection to inverter: {}'.format(device.name),
-                                  type=DISPLAY_NAME)
+            if not client.connect():
+                self.logger.error(f"Failed to establish communication to inverter: {dev.name}")
+                return
 
-        elif device.deviceTypeId == "smaIndigoAggregation":
-            aggregation_type = properties["aggregationType"]
+            self.inverters[dev.id] = client
 
-            if aggregation_type == "inverterList":
-                aggregation = InverterListAggregation(
-                    device,
-                    properties['inverterList'],
-                    properties['inverterListState'],
-                    properties['inverterListOperation']
-                )
-                self.aggregations[device.id] = aggregation
-                self.add_dependencies(device.id, [])
+        elif dev.deviceTypeId == 'smaIndigoHomeManager':
+            if self.home_manager_thread:
+                self.logger.error(f"Home Manager already exists. Only one Home Manager is allowed for now. Device '{dev.name}' will be ignored.")
+                return
 
-            elif aggregation_type == "aggregationList":
-                aggregation = AggregationListAggregation(
-                    device,
-                    properties['aggregationList'],
-                    properties['aggregationListOperation']
-                )
-                self.aggregations[device.id] = aggregation
+            self.home_manager_thread = HomeManagerClientThread(dev.id)
+            self.home_manager_thread.start()
 
-                self.add_dependencies(device.id, [int(d) for d in properties['aggregationList']])
+            # Wait 5 seconds for the thread to get the Home Manager object
+            self.home_manager_thread.home_manager_present_event.wait(5)
 
-            elif aggregation_type == "inverterToInverter":
-                aggregation = InverterToInverterAggregation(
-                    device,
-                    int(properties['inverterToInverter_Inverter1']),
-                    properties['inverterToInverter_Inverter1State'],
-                    int(properties['inverterToInverter_Inverter2']),
-                    properties['inverterToInverter_Inverter2State'],
-                    properties['inverterToInverterOperation']
-                )
-                self.aggregations[device.id] = aggregation
-                self.add_dependencies(device.id, [])
+            home_manager = self.home_manager_thread.get_home_manager()
 
-            elif aggregation_type == "aggregationToAggregation":
-                aggregation = AggregationToAggregationAggregation(
-                    device,
-                    int(properties['aggregationToAggregation_Aggregation1']),
-                    int(properties['aggregationToAggregation_Aggregation2']),
-                    properties['aggregationToAggregationOperation']
-                )
-                self.aggregations[device.id] = aggregation
-                self.add_dependencies(
-                    device.id,
-                    [
-                        int(properties['aggregationToAggregation_Aggregation1']),
-                        int(properties['aggregationToAggregation_Aggregation2'])
-                    ]
-                )
+            if home_manager is None:
+                self.logger.error(f"Failed to establish communication to Home Manager: {dev.name}")
+                self.home_manager_thread.stop()
+                self.home_manager_thread.join()
+                return
 
-            elif aggregation_type == "aggregationToInverter":
-                aggregation = AggregationToInverterAggregation(
-                    device,
-                    int(properties['aggregationToInverter_Aggregation']),
-                    int(properties['aggregationToInverter_Inverter']),
-                    properties['aggregationToInverter_InverterState'],
-                    properties['aggregationToInverterOperation']
-                )
-                self.aggregations[device.id] = aggregation
-                self.add_dependencies(device.id, [int(properties['aggregationToInverter_Aggregation'])])
+        elif dev.deviceTypeId == 'smaIndigoLogicalMeter':
+            if self.logicalMeter:
+                self.logger.error(f"Logical Meter already exists. Only on Logical Meter is allowed for now. Device '{dev.name}' will be ignored.")
+                return
 
-            elif aggregation_type == "inverterToAggregation":
-                aggregation = InverterToAggregationAggregation(
-                    device,
-                    int(properties['aggregationToInverter_Inverter']),
-                    properties['aggregationToInverter_InverterState'],
-                    int(properties['aggregationToInverter_Aggregation']),
-                    properties['aggregationToInverterOperation']
-                )
-                self.aggregations[device.id] = aggregation
-                self.add_dependencies(device.id, [int(properties['aggregationToInverter_Aggregation'])])
+            if not self.home_manager_thread:
+                self.logger.warning(f"Logical Meter requires a Home Manager to account for the total consumed power. This state will not be updated unless a Home Manager is configured.")
+
+            self.logicalMeter = LogicalMeter(
+                device_id=dev.id,
+                totalProduction=0,
+                totalConsumption=0,
+                solarConsumption=0,
+                solarConsumptionPercentage=0
+            )
 
         else:
-            indigo.server.log('Unknown device type id: {}'.format(device.deviceTypeId), type=DISPLAY_NAME)
+            self.logger.warning(f"Unknown device type id: {dev.deviceTypeId}")
+            return
 
-    def deviceStopComm(self, device):
-        if device.deviceTypeId == 'smaIndigoInverter' and device.id in self.inverters.keys():
-            client = self.inverters.get(device.id)
+        self.logger.info(f'Successfully started device {dev.name}.')
+
+    def deviceStopComm(self, dev: indigo.Device) -> None:
+        if dev.deviceTypeId == "smaIndigoInverter" and dev.id in self.inverters.keys():
+            client = self.inverters.get(dev.id)
             client.close()
-            del self.inverters[device.id]
-            indigo.server.log('Stopped communication with inverter device: {}'.format(device.name),
-                              type=DISPLAY_NAME)
+            del self.inverters[dev.id]
 
-        elif device.deviceTypeId == 'smaIndigoAggregation' and device.id in self.aggregations.keys():
-            del self.aggregations[device.id]
+        elif dev.deviceTypeId == "smaIndigoHomeManager" and self.home_manager_thread.device_id == dev.id:
+            self.home_manager_thread.stop()
+            self.home_manager_thread.join()
+            self.home_manager_thread = None
+
+        elif dev.deviceTypeId == "smaIndigoLogicalMeter" and self.logicalMeter.device_id == dev.id:
+            self.logicalMeter = None
+
+        else:
+            self.logger.warning(f"Unknown device type id: {dev.deviceTypeId}")
+            return
+
+        self.logger.info(f'Successfully stopped device {dev.name}.')
 
     ###########################
 
-    def add_dependencies(self, device_id, dependency_list):
-        dependency_set = self.dependencies.get(device_id, set())
-        for element in dependency_set:
-            dependency_set.add(element)
-        self.dependencies[device_id] = dependency_set
-
-    def update_inverters(self):
-        """
-        Updates the states of all Inverters.
-        If, for some reason, a ConnectionError is found, it attempts to reconnect the inverter
-        """
+    def fetch_inverters_data(self):
+        """Fetches the data from all registered inverters and updates the states in indigo.
+        Will attempt to reconnect the inverter if a ConnectionError is found"""
         for device_id, client in self.inverters.items():
             try:
-                states = client.generate_states()
-                IndigoService.update_inverter_states(device_id, states)
+                inverter = client.get_inverter_data()
+                indigo.devices[device_id].updateStatesOnServer([
+                    {'key': 'serialNumber', 'value': inverter.serialNumber, 'uiValue': inverter.serialNumber},
+                    {'key': 'acPower', 'value': inverter.acPower, 'uiValue': f'{inverter.acPower} W'},
+                    {'key': 'acCurrent', 'value': inverter.acCurrent, 'uiValue': f'{inverter.acCurrent} A'},
+                    {'key': 'acVoltage', 'value': inverter.acVoltage, 'uiValue': f'{inverter.acVoltage} V'},
+                    {'key': 'gridFreq', 'value': inverter.gridFreq, 'uiValue': f'{inverter.gridFreq} Hz'},
+                    {'key': 'deviceTemperature', 'value': inverter.deviceTemperature, 'uiValue': f'{inverter.deviceTemperature} \u00b0C'},
+                    {'key': 'totalOperationTime', 'value': inverter.totalOperationTime, 'uiValue': f'{inverter.totalOperationTime} s'},
+                    {'key': 'feedInTime', 'value': inverter.feedInTime, 'uiValue': f'{inverter.feedInTime} s'},
+                    {'key': 'dailyYield', 'value': inverter.dailyYield, 'uiValue': f'{inverter.dailyYield} Wh'},
+                    {'key': 'totalYield', 'value': inverter.totalYield, 'uiValue': f'{inverter.totalYield} Wh'},
+                ])
 
             except ModbusException:
-                indigo.server.log('Lost connection to inverter: {}. Reconnecting...'.format(device_id),
-                                  type=DISPLAY_NAME)
-                client.close()
-                client.connect()
-            except AttributeError:
-                indigo.server.log('Lost connection to inverter: {}. Reconnecting...'.format(device_id),
-                                  type=DISPLAY_NAME)
-                client.close()
-                client.connect()
+                self.logger.error(f"Lost connection to inverter: {device_id}. Reconnecting...")
+                client.reconnect()
 
-    def update_aggregations(self):
-        """
-        Updates the value state of all aggregations.
-        """
-        no_dependency_aggregations = set(filter(lambda x: len(self.dependencies[x]) == 0, self.dependencies))
+            except AttributeError as e:
+                self.logger.error(f"Lost connection to inverter: {device_id}. Reconnecting...")
+                client.reconnect()
 
-        for aggregation_id in no_dependency_aggregations:
-            aggregation = self.aggregations.get(aggregation_id)
-            aggregation.calculate_value()
-            IndigoService.update_aggregation_states(aggregation)
+    def fetch_home_manager_data(self):
+        if not self.home_manager_thread:
+            return
 
-        aggregations_with_dependencies = set(filter(lambda x: len(self.dependencies[x]) == 0, self.dependencies))
+        home_manager = self.home_manager_thread.get_home_manager()
 
-        processed = no_dependency_aggregations
+        if home_manager is None:
+            self.logger.error(f"Lost connection to Home Manager. Reconnecting...")
 
-        for aggregation_id in aggregations_with_dependencies:
-            if aggregation_id not in processed:
-                self._update_aggregations_rec(aggregation_id, processed)
+            self._restart_home_manager_client_thread()
 
-    def _update_aggregations_rec(self, device_id, processed):
-        # Process dependencies
-        for dependency_id in self.dependencies[device_id]:
-            if dependency_id not in processed:
-                if not self._update_aggregations_rec(dependency_id, processed):
-                    indigo.server.log(
-                        'Unable to load device {} dependencies.'.format(device_id) +
-                        'Maybe some of them were deleted. Device will be disabled.',
-                        type=DISPLAY_NAME
-                    )
-                    del self.aggregations[device_id]
-                    del self.dependencies[device_id]
-                    return False
+            return
 
-        aggregation = self.aggregations.get(device_id)
-        if aggregation is None:
-            return False
+        indigo.devices[self.home_manager_thread.device_id].updateStatesOnServer([
+            {'key': 'totalPowerFromGrid', 'value': home_manager.totalPowerFromGrid, 'uiValue': f'{home_manager.totalPowerFromGrid} W'},
+            {'key': 'totalPowerToGrid', 'value': home_manager.totalPowerToGrid, 'uiValue': f'{home_manager.totalPowerToGrid} W'},
+            {'key': 'phase1PowerFromGrid', 'value': home_manager.phase1PowerFromGrid, 'uiValue': f'{home_manager.phase1PowerFromGrid} W'},
+            {'key': 'phase1PowerToGrid', 'value': home_manager.phase1PowerToGrid, 'uiValue': f'{home_manager.phase1PowerToGrid} W'},
+            {'key': 'phase2PowerFromGrid', 'value': home_manager.phase2PowerFromGrid, 'uiValue': f'{home_manager.phase2PowerFromGrid} W'},
+            {'key': 'phase2PowerToGrid', 'value': home_manager.phase2PowerToGrid, 'uiValue': f'{home_manager.phase2PowerToGrid} W'},
+            {'key': 'phase3PowerFromGrid', 'value': home_manager.phase3PowerFromGrid, 'uiValue': f'{home_manager.phase3PowerFromGrid} W'},
+            {'key': 'phase3PowerToGrid', 'value': home_manager.phase3PowerToGrid, 'uiValue': f'{home_manager.phase3PowerToGrid} W'},
+        ])
 
-        aggregation.calculate_value()
-        IndigoService.update_aggregation_states(aggregation)
+    def update_logic_meter(self):
+        if self.logicalMeter is None:
+            return
 
-        processed.add(device_id)
-        return True
+        total_production = sum([indigo.devices[device_id].states['acPower'] for device_id in self.inverters.keys()])
+        total_consumption = 0  # Only calculated if a Home Manager is configured
+        solar_consumption = 0  # Only calculated if a Home Manager is configured
+        solar_consumption_percentage = 0  # Only calculated if a Home Manager is configured
+
+        if self.home_manager_thread:
+            power_from_grid = indigo.devices[self.home_manager_thread.device_id].states['totalPowerFromGrid']
+            power_to_grid = indigo.devices[self.home_manager_thread.device_id].states['totalPowerToGrid']
+
+            total_consumption = total_production + power_from_grid - power_to_grid
+
+            solar_consumption = total_production - power_to_grid
+            if total_production == 0:
+                solar_consumption_percentage = 0
+            else:
+                solar_consumption_percentage = solar_consumption / total_production * 100
+
+        self.logicalMeter.totalProduction = total_production
+        self.logicalMeter.totalConsumption = total_consumption
+        self.logicalMeter.solarConsumption = solar_consumption
+        self.logicalMeter.solarConsumptionPercentage = solar_consumption_percentage
+
+        indigo.devices[self.logicalMeter.device_id].updateStatesOnServer([
+            {'key': 'totalProduction', 'value': self.logicalMeter.totalProduction, 'uiValue': f'{self.logicalMeter.totalProduction} W'},
+            {'key': 'totalConsumption', 'value': self.logicalMeter.totalConsumption, 'uiValue': f'{self.logicalMeter.totalConsumption} W'},
+            {'key': 'solarConsumption', 'value': self.logicalMeter.solarConsumption, 'uiValue': f'{self.logicalMeter.solarConsumption} W'},
+            {'key': 'solarConsumptionPercentage', 'value': self.logicalMeter.solarConsumptionPercentage, 'uiValue': f'{self.logicalMeter.solarConsumptionPercentage} %'},
+        ])
 
     def reconnect_all(self):
-        """
-        Reconnects all devices
-        """
-        indigo.server.log('Reconnecting all devices........%d devices' % len(self.inverters))
-
+        """Reconnects all devices registered in the system"""
+        self.logger.info(f'Reconnecting inverters... {len(self.inverters)} devices')
         for device_id, client in self.inverters.items():
-            client.close()
-            if client.connect():
-                indigo.server.log('    - {} --- OK'.format(device_id), type=DISPLAY_NAME)
+            dev = indigo.devices[device_id]
+            if client.reconnect():
+                self.logger.info(f'    - {dev.name} --- OK')
             else:
-                indigo.server.log('    - {} --- FAILED'.format(device_id), type=DISPLAY_NAME)
+                self.logger.error(f'    - {dev.name} --- FAILED')
+
+        if self.home_manager_thread:
+            self.logger.info(f'Reconnecting Home Manager')
+            dev = indigo.devices[self.home_manager_thread.device_id]
+            if self._restart_home_manager_client_thread():
+                self.logger.info(f'    - {dev.name} --- OK')
+            else:
+                self.logger.error(f'    - {dev.name} --- FAILED')
 
     def reconnect_device(self, valuesDict, typeId):
-        """
-        Reconnects a specific device
-        """
-        indigo.server.log('Reconnect Device is not yet implemented', type=DISPLAY_NAME)
+        """Reconnects a specific device"""
+        device = indigo.devices[int(valuesDict['targetDevice'])]
 
-    def get_available_inverter_states(self, filter="", valuesDict=None, typeId="", targetId=0):
-        return [
-            ("serialNumber", "Serial Number"),
-            ("acPower", "AC Power"),
-            ("acApparentPower", "AC Apparent Power"),
-            ("acCurrent", "AC Current"),
-            ("acVoltage", "AC Voltage"),
-            ("gridFreq", "Grid Frequency"),
-            ("dcPower", "DC Power"),
-            ("dcInputVoltage", "DC Input Voltage"),
-            ("deviceTemperature", "Device Temperature"),
-            ("dailyYield", "Daily Yield"),
-            ("totalYield", "Total Yield"),
-            ("totalOperationTime", "Total Operation Time"),
-            ("feedInTime", "Feed-In Time"),
-            ("intermediateVoltage", "Intermediate Voltage"),
-            ("isolationResistance", "Isolation Resistance"),
-            ("totalEnergyFromGrid", "Total Energy From Grid"),
-            ("totalEnergyToGrid", "Total Energy To Grid"),
-            ("powerFromGrid", "Power From Grid"),
-            ("powerToGrid", "Power To Grid"),
-        ]
+        if device.deviceTypeId == 'smaIndigoInverter':
+            client = self.inverters.get(device.id)
+            if client.reconnect():
+                self.logger.info(f'Successfully reconnected device {device.name}.')
+            else:
+                self.logger.error(f'Failed to reconnect device {device.name}.')
+
+        elif device.deviceTypeId == 'smaIndigoHomeManager':
+            if self._restart_home_manager_client_thread():
+                self.logger.info(f'Successfully reconnected device {device.name}.')
+            else:
+                self.logger.error(f'Failed to reconnect device {device.name}.')
+
+        else:
+            self.logger.warning(f'Device reconnection not supported for that device.')
+            errorsDict = indigo.Dict()
+            errorsDict['targetDevice'] = "Device reconnection not supported for this device."
+            errorsDict['showAlertText'] = "Device reconnection not supported for that device."
+            return False, valuesDict, errorsDict
+
+        return True, valuesDict, indigo.Dict()
+
+    def _restart_home_manager_client_thread(self):
+        if not self.home_manager_thread:
+            return False
+
+        self.home_manager_thread.stop()
+        self.home_manager_thread.join()
+
+        self.home_manager_thread = HomeManagerClientThread(self.home_manager_thread.device_id)
+        self.home_manager_thread.start()
+        self.home_manager_thread.home_manager_present_event.wait(5)
+
+        return self.home_manager_thread.get_home_manager() is not None

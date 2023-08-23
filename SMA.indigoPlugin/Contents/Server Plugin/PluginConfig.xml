@@ -1,0 +1,6 @@
+<?xml version="1.0"?>
+<PluginConfig>
+    <Field id="stateUpdateTime" type="textfield" defaultValue="10">
+        <Label>State update time: </Label>
+    </Field>
+</PluginConfig>
