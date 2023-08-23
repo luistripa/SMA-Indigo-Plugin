@@ -3,7 +3,7 @@
 <plist version="1.0">
 <dict>
 	<key>PluginVersion</key>
-	<string>0.1</string>
+	<string>1.0.0</string>
 	<key>ServerApiVersion</key>
 	<string>3.2</string>
 	<key>IwsApiVersion</key>
@@ -14,12 +14,5 @@
 	<string>com.energymeter</string>
 	<key>CFBundleVersion</key>
 	<string>1.0.1</string>
-	<key>CFBundleURLTypes</key>
-	<array>
-		<dict>
-			<key>CFBundleURLName</key>
-			<string>https://carter53.wordpress.com/indigo/netatmo/</string>
-		</dict>
-	</array>
 </dict>
 </plist>
